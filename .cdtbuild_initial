@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?fileVersion 3.1.0?>
+
+<ManagedProjectBuildInfo>
+<project id="CppTestingWithBoost.cdt.managedbuild.target.gnu.cygwin.lib.1443959482" name="Static Library (Gnu on Windows)" projectType="cdt.managedbuild.target.gnu.cygwin.lib">
+<configuration artifactExtension="a" artifactName="CppTesting" cleanCommand="rm -rf" description="" errorParsers="org.eclipse.cdt.core.MakeErrorParser;org.eclipse.cdt.core.GCCErrorParser;org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.GASErrorParser" id="cdt.managedbuild.config.gnu.cygwin.lib.debug.1246246562" name="Debug" parent="cdt.managedbuild.config.gnu.cygwin.lib.debug">
+<toolChain id="cdt.managedbuild.toolchain.gnu.cygwin.lib.debug.1853439415" name="GCC Tool Chain" superClass="cdt.managedbuild.toolchain.gnu.cygwin.lib.debug">
+<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.lib.debug.1014654461" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.lib.debug"/>
+<tool id="cdt.managedbuild.tool.gnu.c.compiler.cygwin.lib.debug.861213760" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.cygwin.lib.debug"/>
+<tool id="cdt.managedbuild.tool.gnu.archiver.cygwin.lib.debug.1353896521" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.cygwin.lib.debug"/>
+<tool id="cdt.managedbuild.tool.gnu.assembler.cygwin.lib.debug.1882622606" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.cygwin.lib.debug"/>
+<macros/>
+</toolChain>
+</configuration>
+<configuration artifactExtension="a" artifactName="CppTestingWithBoost" cleanCommand="rm -rf" description="" errorParsers="org.eclipse.cdt.core.MakeErrorParser;org.eclipse.cdt.core.GCCErrorParser;org.eclipse.cdt.core.GLDErrorParser;org.eclipse.cdt.core.GASErrorParser" id="cdt.managedbuild.config.gnu.cygwin.lib.release.1944119283" name="Release" parent="cdt.managedbuild.config.gnu.cygwin.lib.release">
+<toolChain id="cdt.managedbuild.toolchain.gnu.cygwin.lib.release.1450043597" name="GCC Tool Chain" superClass="cdt.managedbuild.toolchain.gnu.cygwin.lib.release">
+<tool id="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.lib.release.420511618" name="GCC C++ Compiler" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.cygwin.lib.release"/>
+<tool id="cdt.managedbuild.tool.gnu.c.compiler.cygwin.lib.release.1892804807" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.cygwin.lib.release"/>
+<tool id="cdt.managedbuild.tool.gnu.archiver.cygwin.lib.release.169341091" name="GCC Archiver" superClass="cdt.managedbuild.tool.gnu.archiver.cygwin.lib.release"/>
+<tool id="cdt.managedbuild.tool.gnu.assembler.cygwin.lib.release.687234418" name="GCC Assembler" superClass="cdt.managedbuild.tool.gnu.assembler.cygwin.lib.release"/>
+</toolChain>
+</configuration>
+</project>
+</ManagedProjectBuildInfo>
