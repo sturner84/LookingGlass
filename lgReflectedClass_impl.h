@@ -35,7 +35,8 @@
 		ReturnType & returnVal GPP_COMMA_IF(N) \
 		GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 { \
-	return LookingGlass::invokeInternal(this, methodSignature, true, returnVal GPP_COMMA_IF(N) \
+	return LookingGlass::invokeInternal(this, methodSignature, true, returnVal, \
+		false GPP_COMMA_IF(N) \
 		GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == LookingGlass::INVOKE_SUCCESS; \
 }
 

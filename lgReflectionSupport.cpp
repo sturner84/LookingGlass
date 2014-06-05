@@ -258,8 +258,9 @@ bool LookingGlass::invoke(std::string functionSignature \
 	GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 { \
 	int r; \
-	return invokeInternal(NULL, functionSignature, false, r GPP_COMMA_IF(N) \
-				GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == INVOKE_SUCCESS; \
+	return invokeInternal(NULL, functionSignature, false, r, false \
+			GPP_COMMA_IF(N) \
+			GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == INVOKE_SUCCESS; \
 }
 
 	GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
@@ -275,8 +276,9 @@ bool LookingGlass::invoke(ReflectedObjectPtr object, \
 	GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 { \
 	int r; \
-	return invokeInternal(object.get(), functionSignature, false, r GPP_COMMA_IF(N) \
-				GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == INVOKE_SUCCESS; \
+	return invokeInternal(object.get(), functionSignature, false, r, false \
+			GPP_COMMA_IF(N) \
+			GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == INVOKE_SUCCESS; \
 }
 
 	GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
@@ -311,6 +313,61 @@ bool LookingGlass::invokeFunction(std::string functionSignature \
 #undef REF_INVOKE
 */
 
+
+	const ReflectedMethod * LookingGlass::getFunctionObject(
+			const ReflectedObject * object,
+			std::string nSignature, bool allowNonReflected) {
+
+		ReflectedData* data = ReflectedData::getDataInstance();
+		std::string signature = ReflectionUtil::correctSignature(nSignature);
+		const ReflectedMethod * func;
+
+		if (object == NULL) {
+			if (data->doesFunctionExist(signature)) {
+				func = data->getFunction(signature);
+			}
+			else {
+				throw INVOKE_BAD_METHOD;
+			}
+		}
+		else
+		{
+			if (object->getClass() != NULL)
+			{
+				const ReflectedClass* c = object->getClass();
+				if (c->doesMethodExist(signature, All_Access, true))
+				{
+					func = c->getMethod(signature);
+				}
+				else
+				{
+					if (allowNonReflected && c->doesNonReflectedMethodExist(
+							signature, All_Access, true)) {
+						func = c->getNonReflectedMethod(signature);
+					}
+					else {
+						throw INVOKE_BAD_METHOD;
+					}
+				}
+			}
+			else
+			{
+				throw INVOKE_BAD_CLASS;
+			}
+		}
+
+		return func;
+
+	}
+
+
+	void * LookingGlass::getObjectForCall(const ReflectedObject * object) {
+		if (object != NULL) {
+			return object->getObject();
+		}
+
+		return NULL;
+	}
 
 
 }

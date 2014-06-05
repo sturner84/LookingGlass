@@ -264,6 +264,17 @@ public:
 	const ReflectedClass * getClass(std::string signature) const;
 
 
+	/**
+	 * Gets a class that corresponds to the type or NULL.
+	 *
+	 * This ignores modifiers like const or volitile and * and & and returns
+	 * the class if it is being reflected
+	 *
+	 * @return a ReflectedClass object or NULL
+	 */
+	const ReflectedClass * getClassFromType(std::string signature) const;
+
+
 
 	/**
 	 * Gets a list of all classes

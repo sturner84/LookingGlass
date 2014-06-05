@@ -35,15 +35,34 @@ protected:
 
 	/**
 	 * All operators in the class/at gloabal scope
-	 * //TODO not supported yet?
+	 * Don't support
 	 */
-	std::map<std::string, const ReflectedOperator *> operators;
+	//std::map<std::string, const ReflectedOperator *> operators;
 
 	/**
 	 * All enums in the class/at gloabal scope
 	 *
 	 */
 	std::map<std::string, const ReflectedEnum *> enums;
+
+	/**
+	 * Contains all non-reflected methods
+	 * These would be auto-generated code that supports the reflection.
+	 * So far, the only thing that will be here are array setter methods
+	 *   (i.e. methods that support x[i] = a;)
+	 */
+	std::map<std::string, const ReflectedMethod *> nonReflectedMethods;
+
+	/**
+	 * Determines if the name of the method meets the pattern of one of the
+	 * auto-generated support methods. If so, it should be excluded from the
+	 * normal lists of methods
+	 *
+	 * @param methodName Name of the method
+	 * @return true if it is one of the auto-generated support methods. See
+	 * isArraySetterSignature and isCopyFunctionSignature in ReflectionUtil
+	 */
+	bool isNonReflectedMethod(std::string methodName);
 
 	/**
 	 * Loads data from the class (methods, fields, operators and enums).
@@ -227,6 +246,56 @@ protected:
 
 
 	/**
+	 * Checks to see if a function exists using the function's signature.
+	 *
+	 * Usage:
+	 * 	int foo(int, double)
+	 * 		Check to see if a function foo exists that returns an int and
+	 * 		takes an int and double as parameters
+	 *
+	 *  @param functionSignature Signature of the function
+	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 *  @param inherited Determines if inherited values are included (by default
+	 *  	this is false)
+	 *  @return true is that function exists
+	 */
+	virtual bool doesNonReflectedMethodExist(std::string functionSignature,
+			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+
+
+	/**
+	 * Gets the number of function signatures that are being reflected
+	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 * @param inherited Determines if inherited values are included (by default
+	 *  	this is false)
+	 *
+	 * @return the number of function signatures
+	 */
+	virtual size_t getNonReflectedMethodCount(VisibilityAccessType vis = Public_Access,
+			bool inherited = false) const;
+
+
+	/**
+	 * Gets a list of all function signatures that are being reflected
+	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 *  @param inherited Determines if inherited values are included (by default
+	 *  	this is false)
+	 * @return a list of function signatures
+	 */
+	virtual const std::vector<std::string> getNonReflectedMethodNames(
+			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+
+	/**
+	 * Gets a function that corresponds to the signature or NULL
+	 *
+	 * @return a metadata object or NULL
+	 */
+	virtual const ReflectedMethod * getNonReflectedMethod(std::string signature) const;
+
+
+
+
+	/**
 	 * Determines if a field exists with this signature
 	 *
 	 * @param signature Signature of the value (i.e. int x or const double y)
@@ -324,95 +393,94 @@ public:
 	 */
 	static int MAX_SIMILAR;
 
-	// operators
-	//TODO can use doesFunctionExist(string) for operators too??
-	/**
-	 * Checks to see if an operator exists using the signature.
-	 *
-	 * Usage:
-	 * 	int foo(int, double) //TODO update documentation
-	 * 		Check to see if a function foo exists that returns an int and
-	 * 		takes an int and double as parameters
-	 *
-	 *  @param functionSignature Signature of the function
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
-	 *  @return true is that function exists
-	 */
-	virtual bool doesOperatorExist(std::string functionSignature,
-			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
 
-	/**
-	 * Gets the number of operators that are being reflected
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
-	 * @return the number of operators
-	 */
-	virtual size_t getOperatorCount(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
-
-	/**
-	 * Gets a list of all operators that are being reflected
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
-	 * @return a list of operators
-	 */
-	virtual const std::vector<std::string> getOperatorNames(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
-
-	/**
-	 * Gets an operator that corresponds to the signature or NULL
-	 *
-	 * @return a metadata object or NULL
-	 */
-	virtual const ReflectedOperator * getOperator(std::string signature) const;
-
-
-	/**
-	 * Gets a list of all operators in the class
-	 *
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param inherited True if inherited operators should be included.
-	 *
-	 * @return List of operators in the class
-	 */
-	virtual std::vector<const ReflectedOperator *> getOperators(
-			VisibilityAccessType vis = Public_Access, bool inherited = false);
-
-	/**
-	 * Gets a list of the closest operators to the name provided
-	 *
-	 * @param name Name to find
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param inherited True if inherited operators should be included.
-	 * @param count Maximum number to return (may be less or more if there
-	 *  are values that are equally close to the name)
-	 *
-	 * @return List of operators that are close in name to the name given
-	 */
-	virtual std::vector<const ReflectedOperator *> getClosestOperators(
-			std::string name, VisibilityAccessType vis = Public_Access,
-			bool inherited = false, int count = MAX_SIMILAR);
-
-
-	/**
-	 * Gets a string comparing the name to the closest names found
-	 *
-	 * @param name Name to find
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param inherited True if inherited values should be included.
-	 * @param count Maximum number to return (may be less or more if there
-	 *  are values that are equally close to the name)
-	 *
-	 * @return String with a list of operators that are close in name
-	 * to the name given
-	 */
-	virtual std::string getClosestOperatorsString(
-			std::string name, VisibilityAccessType vis = Public_Access,
-			bool inherited = false, int count = MAX_SIMILAR);
+//	/**
+//	 * Checks to see if an operator exists using the signature.
+//	 *
+//	 * Usage:
+//	 * 	int foo(int, double) // update documentation
+//	 * 		Check to see if a function foo exists that returns an int and
+//	 * 		takes an int and double as parameters
+//	 *
+//	 *  @param functionSignature Signature of the function
+//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+//	 *  @param inherited Determines if inherited values are included (by default
+//	 *  	this is false)
+//	 *  @return true is that function exists
+//	 */
+//	virtual bool doesOperatorExist(std::string functionSignature,
+//			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+//
+//	/**
+//	 * Gets the number of operators that are being reflected
+//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+//	 *  @param inherited Determines if inherited values are included (by default
+//	 *  	this is false)
+//	 * @return the number of operators
+//	 */
+//	virtual size_t getOperatorCount(VisibilityAccessType vis = Public_Access,
+//			bool inherited = false) const;
+//
+//	/**
+//	 * Gets a list of all operators that are being reflected
+//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+//	 *  @param inherited Determines if inherited values are included (by default
+//	 *  	this is false)
+//	 * @return a list of operators
+//	 */
+//	virtual const std::vector<std::string> getOperatorNames(VisibilityAccessType vis = Public_Access,
+//			bool inherited = false) const;
+//
+//	/**
+//	 * Gets an operator that corresponds to the signature or NULL
+//	 *
+//	 * @return a metadata object or NULL
+//	 */
+//	virtual const ReflectedOperator * getOperator(std::string signature) const;
+//
+//
+//	/**
+//	 * Gets a list of all operators in the class
+//	 *
+//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+//	 * @param inherited True if inherited operators should be included.
+//	 *
+//	 * @return List of operators in the class
+//	 */
+//	virtual std::vector<const ReflectedOperator *> getOperators(
+//			VisibilityAccessType vis = Public_Access, bool inherited = false);
+//
+//	/**
+//	 * Gets a list of the closest operators to the name provided
+//	 *
+//	 * @param name Name to find
+//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+//	 * @param inherited True if inherited operators should be included.
+//	 * @param count Maximum number to return (may be less or more if there
+//	 *  are values that are equally close to the name)
+//	 *
+//	 * @return List of operators that are close in name to the name given
+//	 */
+//	virtual std::vector<const ReflectedOperator *> getClosestOperators(
+//			std::string name, VisibilityAccessType vis = Public_Access,
+//			bool inherited = false, int count = MAX_SIMILAR);
+//
+//
+//	/**
+//	 * Gets a string comparing the name to the closest names found
+//	 *
+//	 * @param name Name to find
+//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+//	 * @param inherited True if inherited values should be included.
+//	 * @param count Maximum number to return (may be less or more if there
+//	 *  are values that are equally close to the name)
+//	 *
+//	 * @return String with a list of operators that are close in name
+//	 * to the name given
+//	 */
+//	virtual std::string getClosestOperatorsString(
+//			std::string name, VisibilityAccessType vis = Public_Access,
+//			bool inherited = false, int count = MAX_SIMILAR);
 
 	//ignore values, just look for name
 	/**

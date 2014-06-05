@@ -93,7 +93,22 @@ private:
 	LookingGlass();
 
 
+	/**
+	 * Gets a main method regardless of type.
+	 *
+	 * @param newMainName Name for the reflected version of main
+	 * @retrun A reflected method to main or NULL
+	 */
 	static const ReflectedMethod * getMain(std::string newMainName);
+
+	/**
+	 * Gets a main method but only if it matches a particular type (i.e. no
+	 * params, 2 params, etc).
+	 *
+	 * @param mainType Type of main method to find.
+	 * @param newMainName Name for the reflected version of main
+	 * @return A reflected method to main or NULL
+	 */
 	static const ReflectedMethod * getMain(MAIN_TYPE mainType, std::string newMainName);
 
 	enum INVOKE_RESULT
@@ -105,16 +120,53 @@ private:
 		INVOKE_NOT_ACCESSIBLE,
 	};
 
+
+	/**
+	 * Gets a method object for the method in question.
+	 *
+	 * @param object Object that the method will be called on
+	 * @param nSignature Signature of method to call
+	 * @param allowNonReflected Allow auto-generated helper methods to be called
+	 *  	(currently only used for array operators).
+	 *
+	 * @return Method pointer for the method or NULL
+	 */
+	static const ReflectedMethod *  getFunctionObject(const ReflectedObject * object,
+			std::string nSignature, bool allowNonReflected);
+
+	/**
+	 * Gets the base reflected object that will be used in the method cal
+	 *
+	 * @param object Wrapped object
+	 *
+	 * @return The reflected object (may be NULL)
+	 */
+	static void * getObjectForCall(const ReflectedObject * object);
+
+
+	template <typename ReturnType>
+	static void getReturnValue(ReturnType & rValue, cpgf::GVariant result);
+
+
+
 #define REF_INVOKE(N, unused) \
 		template <typename ReturnType> \
 		static INVOKE_RESULT invokeInternal(const ReflectedObject * object, \
 				std::string signature, \
-				bool useReturn, ReturnType & returnVal GPP_COMMA_IF(N) \
+				bool useReturn, ReturnType & returnVal, bool allowNonReflected \
+				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
 	GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 
 #undef REF_INVOKE
+
+
+template <typename ReturnType>
+	static INVOKE_RESULT invokeArraySetter(const ReflectedObject * object,
+			std::string signature,
+			bool useReturn, ReturnType & returnVal, const cpgf::GVariant & p0,
+			const cpgf::GVariant & p1);
 
 //	template <typename ReturnType>
 //	static INVOKE_RESULT invokeInternalTest(const ReflectedObject * object,
@@ -521,7 +573,8 @@ public:
 				ReturnType & returnVal GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 				{ \
-	return invokeInternal(object, functionSignature, true, returnVal GPP_COMMA_IF(N) \
+	return invokeInternal(object, functionSignature, true, returnVal, false \
+			GPP_COMMA_IF(N) \
 			GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == INVOKE_SUCCESS; \
 				}
 
@@ -536,7 +589,8 @@ GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 				ReturnType & returnVal GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 				{ \
-	return invokeInternal(NULL, functionSignature, true, returnVal GPP_COMMA_IF(N) \
+	return invokeInternal(NULL, functionSignature, true, returnVal, false \
+			GPP_COMMA_IF(N) \
 			GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == INVOKE_SUCCESS; \
 				}
 
@@ -652,88 +706,117 @@ bool LookingGlass::setGlobalVariable(const ValueType& val, std::string signature
 //}
 
 
+
+template <typename ReturnType>
+void LookingGlass::getReturnValue(ReturnType & rValue, cpgf::GVariant result) {
+	if (cpgf::canFromVariant<ReturnType>(result)) {
+		rValue = cpgf::fromVariant<ReturnType>(result);
+	}
+	else {
+		throw INVOKE_BAD_RETURN;
+	}
+}
+
+
+
+//a no op
+#define CODE_NOTHING
+
+//code to insert into invokeInternal where N = 0
+//fixes calls to postfix ++ and --
+#define POST_FIX_OP_CODE \
+	if (ReflectionUtil::isPostFixOperator(nSignature)) { \
+		return invokeInternal(object, nSignature, useReturn, returnVal, false, \
+				0); \
+	}
+
+//determines if the postfix code will be added
+#define POST_FIX_OP(N) \
+		GPP_IF(N, CODE_NOTHING, POST_FIX_OP_CODE)
+
+
+//hack to ensure that subtracting from 0 gives a defined value
+#define I_GPP_DEC_0       60
+
+
+//code to insert into invokeInternal where N = 2
+//fixes calls to operator[] where the [] is an lvalue
+#define ARRAY_SETTER_CODE \
+	if (object != NULL \
+		&& ReflectionUtil::isSettableArrayOperator(nSignature)) { \
+		return invokeArraySetter(object, nSignature, useReturn, returnVal, \
+						p0, p1); \
+	}
+
+//determines if the array code will be added
+#define ARRAY_OP(N) \
+		GPP_IF(GPP_DEC(GPP_DEC(N)), CODE_NOTHING, ARRAY_SETTER_CODE)
+
+
+//TODO use an exception instead of a result?
 #define REF_INVOKE(N, unused) \
-		template <typename ReturnType>  \
-		LookingGlass::INVOKE_RESULT LookingGlass::invokeInternal( \
-				const ReflectedObject * object, std::string signature, \
-				bool useReturn, ReturnType & returnVal GPP_COMMA_IF(N) \
-				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
-				{ \
-	LookingGlass::INVOKE_RESULT success = INVOKE_SUCCESS; \
-	const ReflectedMethod * func = NULL; \
-	bool exists = false; \
-	void * objectForCall = NULL; \
+template <typename ReturnType>  \
+LookingGlass::INVOKE_RESULT LookingGlass::invokeInternal( \
+		const ReflectedObject * object, std::string nSignature, \
+		bool useReturn, ReturnType & returnVal, bool allowNonReflected \
+		GPP_COMMA_IF(N) \
+		GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) { \
 	\
-	ReflectedData* data = ReflectedData::getDataInstance(); \
+	POST_FIX_OP(N) \
+	ARRAY_OP(N) \
 	\
-	if (object == NULL) /* this is a function, then */ \
-		{ \
-		if (data->doesFunctionExist(signature)) \
-		{ \
-			func = data->getFunction(signature); \
-			exists = true; \
-		} \
-		else \
-		{ \
-			success = INVOKE_BAD_METHOD; \
-		} \
-		} \
-		else \
-		{ \
-			if (object->getClass() != NULL)  \
-			{ \
-				const ReflectedClass* c = object->getClass(); \
-				if (c->doesMethodExist(signature, All_Access, true)) \
-				{ \
-					func = c->getMethod(signature); \
-					objectForCall = object->getObject(); \
-					exists = true; \
-				} \
-				else \
-				{ \
-					success = INVOKE_BAD_METHOD; \
-				} \
-			} \
-			else \
-			{ \
-				success = INVOKE_BAD_CLASS; \
-			} \
-		} \
+	try { \
+		const ReflectedMethod * func = getFunctionObject(object, \
+				nSignature, allowNonReflected); \
 		\
-		if (exists && func->isAccessible()) \
-		{ \
-			cpgf::GVariant result = func->getMethod()->invoke(objectForCall GPP_COMMA_IF(N) \
-					GPP_REPEAT(N, GPP_COMMA_PARAM, p));  \
-					\
-					if (useReturn) \
-					{ \
-						if (cpgf::canFromVariant<ReturnType>(result)) \
-						{ \
-							returnVal = cpgf::fromVariant<ReturnType>(result); \
-						} \
-						else \
-						{ \
-							success = INVOKE_BAD_RETURN; \
-						} \
-					} \
-		} \
-		else \
-		{ \
-			if (func && !func->isAccessible()) \
-			{ \
-				success = INVOKE_NOT_ACCESSIBLE; \
+		if (func && func->isAccessible()) { \
+			void * objectForCall = getObjectForCall(object); \
+			cpgf::GVariant result = func->getMethod()->invoke(objectForCall \
+					GPP_COMMA_IF(N) GPP_REPEAT(N, GPP_COMMA_PARAM, p));  \
+			\
+			if (useReturn) { \
+				getReturnValue(returnVal, result); \
 			} \
 		} \
+		else { \
+			if (func && !func->isAccessible()) { \
+				throw INVOKE_NOT_ACCESSIBLE; \
+			} \
+		} \
+	} \
+	catch (LookingGlass::INVOKE_RESULT & e) { \
+		return e; \
+	} \
 		\
-		return success; \
-				}
+	return INVOKE_SUCCESS; \
+}
 
 
 GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 
 #undef REF_INVOKE
 
+#undef I_GPP_DEC_0
 
+
+
+
+
+
+
+template <typename ReturnType>
+	LookingGlass::INVOKE_RESULT LookingGlass::invokeArraySetter(
+			const ReflectedObject * object,
+			std::string signature,
+			bool useReturn, ReturnType & returnVal, const cpgf::GVariant & p0,
+			const cpgf::GVariant & p1) {
+
+		std::string arraySetterSig = ReflectionUtil::createArraySetterSignature(
+				object->getClass()->getName(), signature);
+
+		return invokeInternal(object, arraySetterSig, useReturn, returnVal,
+				true, p0, p1);
+}
 
 
 //template <typename ReturnType>
@@ -878,80 +961,7 @@ GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 
 
 
-/*
- * #define REF_INVOKE(N, unused) \
-template <typename ReturnType>  \
-LookingGlass::INVOKE_RESULT LookingGlass::invoke( \
-				std::string className, std::string signature, \
-				bool useReturn, ReturnType & returnVal GPP_COMMA_IF(N) \
-				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
-{ \
-	LookingGlass::INVOKE_RESULT success = INVOKE_SUCCESS; \
-	const cpgf::GMetaMethod* func; \
-	bool exists = false; \
-	\
-	ReflectedData* data = ReflectedData::getDataInstance(); \
-	\
-	if (className == "") \
-	{ \
-		if (data->doesFunctionExist(signature)) \
-		{ \
-			func = data->getFunction(signature); \
-			exists = true; \
-		} \
-		else \
-		{ \
-			success = INVOKE_BAD_METHOD; \
-		} \
-	} \
-	else \
-	{ \
-		if (data->doesClassExist(className)) \
-		{ \
-			const ReflectedClass* c = data->getClass(className); \
-			if (c->doesMethodExist(signature)) \
-			{ \
-				func = c->getMethod(signature); \
-				exists = true; \
-			} \
-			else \
-			{ \
-				success = INVOKE_BAD_METHOD; \
-			} \
-		} \
-		else \
-		{ \
-			success = INVOKE_BAD_CLASS; \
-		} \
-	} \
-	\
-	if (exists) \
-	{ \
-		cpgf::GVariant result = func->invoke(NULL GPP_COMMA_IF(N) \
-				GPP_REPEAT(N, GPP_COMMA_PARAM, p));  \
-				\
-		if (useReturn) \
-		{ \
-			if (cpgf::canFromVariant<ReturnType>(result)) \
-			{ \
-				returnVal = cpgf::fromVariant<ReturnType>(result); \
-			} \
-			else \
-			{ \
-				success = INVOKE_BAD_RETURN; \
-			} \
-		} \
-	} \
-	\
-	return success; \
-}
 
-
-	GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
-
-#undef REF_INVOKE
- *
- */
 
 }
 

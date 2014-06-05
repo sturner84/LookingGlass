@@ -23,10 +23,26 @@ if there are mismatches between the instructor’s and student’s code
  See the wiki for limitations and bugs.
  
  Version:
-	0.75
+	0.80
+	
+	
+version 0.80	
+	Added support for operators as methods (no longer separate)
+		Support for postfix operators without having to 
+			specify a parameter
+		Support for the [] operator when changing values
+			(i.e. x[i] = 0;)
+			Operator should be called as a method with 2 parameters
+			where the second one is the new value
+	Ensured that references to reflected classes all point to the same object
+		Stops premature deleting
+	Modified the ReflectedObjectPtr so that it casts correctly to a GVariant
+	Some refactoring of the code
 
 		
-
+version 0.75 
+	Initial version
+	
 	
 License:
 	The MIT License (MIT)

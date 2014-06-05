@@ -11,6 +11,66 @@
 
 namespace cpptesting {
 
+//ReflectedObjectReference ReflectedObjectReference::instance; //singleton
+//
+//ReflectedObjectReference::ReflectedObjectReference() {
+//	//do nothing
+//}
+//
+//
+//ReflectedObjectReference ReflectedObjectReference::getInstance() {
+//	return instance;
+//}
+//
+//
+//void ReflectedObjectReference::addObject(const ReflectedClass * rClass,
+//		ReflectedObjectPtr rObject) {
+//
+//	std::map<void *, boost::weak_ptr<ReflectedObject> > & objList
+//		= createdObjects[rClass];
+//
+//	boost::weak_ptr<ReflectedObject> cPointer(rObject);
+//	objList[rObject.get()->getObject()] = cPointer;
+//}
+//
+//
+//ReflectedObjectPtr ReflectedObjectReference::getObject(
+//		const ReflectedClass * rClass,
+//		void * ptr) {
+//
+//	std::map<void *, boost::weak_ptr<ReflectedObject> > & objList
+//			= createdObjects[rClass];
+//
+//	std::map<void *, boost::weak_ptr<ReflectedObject> >::iterator found
+//			= objList.find(ptr);
+//
+//		if (found != objList.end()) {
+//			ReflectedObjectPtr newPtr(found->second.lock());
+//
+//			if (newPtr) {
+//				return newPtr;
+//			}
+//			else {
+//				//invalid so, delete it and return null
+//				objList.erase(found);
+//			}
+//		}
+//		ReflectedObjectPtr nullPtr;
+//		return nullPtr;
+//}
+//
+//
+//bool ReflectedObjectReference::hasObject(const ReflectedClass * rClass,
+//		void * ptr) {
+//
+//	std::map<void *, boost::weak_ptr<ReflectedObject> > & objList
+//				= createdObjects[rClass];
+//
+//	return objList.count(ptr) != 0;
+//}
+
+
+
 
 ReflectedBaseClass::ReflectedBaseClass(const ReflectedClass * c) :
 		ReflectedItem(c->getName(), true, Public, Class)
@@ -60,9 +120,79 @@ ReflectedObject::ReflectedObject(const ReflectedClass * c, void * obj)
 	mObject = obj;
 }
 
+
+/**
+ * @brief Constructor for the object
+ *
+ * @param c Class from which this was created
+ * @param obj Object returned from creating the reflected class
+ */
+//ReflectedObject::ReflectedObject(const ReflectedClass * c, const cpgf::GVariant & obj) {
+//	mClass = c;
+//	gObject = obj;
+//}
+
+
+/**
+ * Gets the reflected class that is referred to in the signature (if
+ * possible).  Returns NULL if it is not a reflected type.
+ *
+ * @param signature Signature of the function/method
+ * @return Reflected class or NULL
+ */
+const ReflectedClass * ReflectedObject::getReturnTypeFromSignature(
+		std::string signature) {
+	std::string returnType = ReflectionUtil::getReturnType(signature);
+
+	ReflectedData* data = ReflectedData::getDataInstance();
+
+	return data->getClassFromType(returnType);
+}
+
+/**
+ * Determines if the return value should be copied (i.e. it isn't a
+ * reference or a pointer.
+ *
+ * @param signature Signature of the function/method
+ * @return true if it should be copied
+ */
+bool ReflectedObject::shouldCopyReturnValue(std::string signature) {
+	std::string returnType = ReflectionUtil::getReturnType(signature);
+
+	return !ReflectionUtil::isPointerType(returnType)
+		&& !ReflectionUtil::isReferenceType(returnType);
+}
+
+/**
+ * Creates a copy of the Return Value
+ *
+ * @param returnValue value to copy
+ * @return a copy of the parameter or, if it shouldn't be copied,
+ * 	the original value
+ */
+cpgf::GVariant ReflectedObject::copyReturnValue(const ReflectedClass * rClass,
+		cpgf::GVariant returnValue) {
+
+	std::string copyName = ReflectionUtil::createCopyFunctionSignature(
+			rClass->getName());
+	if (rClass->doesNonReflectedMethodExist(copyName)) {
+		const ReflectedMethod * cMethod = rClass->getNonReflectedMethod(
+				copyName);
+
+		cpgf::GVariant copyVal = cMethod->getMethod()->invoke(
+				cpgf::fromVariant<void *>(returnValue), returnValue);
+
+		return copyVal;
+	}
+
+	return returnValue;
+}
+
+
 ReflectedObject::~ReflectedObject()
 {
 	mClass->getClass()->destroyInstance(mObject);
+//	mClass->getClass()->destroyInstance(cpgf::fromVariant<void *>(gObject));
 }
 
 
@@ -74,6 +204,7 @@ const ReflectedClass * ReflectedObject::getClass() const
 void * ReflectedObject::getObject() const
 {
 	return mObject;
+//	return cpgf::fromVariant<void *>(gObject);
 }
 
 const std::string ReflectedObject::getClassName()
@@ -107,13 +238,72 @@ const std::string ReflectedObject::getClassName()
 		GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 { \
 	int r; \
-	return LookingGlass::invokeInternal(this, methodSignature, false, r GPP_COMMA_IF(N) \
+	return LookingGlass::invokeInternal(this, methodSignature, false, r, false \
+		GPP_COMMA_IF(N) \
 		GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == LookingGlass::INVOKE_SUCCESS; \
 }
 
 GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 
 #undef REF_INVOKE
+
+
+
+/**
+ * Invokes a method with the specified parameters. No value is returned
+ * 	from the method invoked.The signature for this function is:
+ *  	bool invokeFunction(string methodSignature,
+ *  		GVariant p0, ...)
+ *  		Most types can be used for GVariant
+ *
+ * @param methodSignature Method to call (i.e. int foo(double x, char y))
+ * @param p<1-28> Parameter for the method.  Currently up to 28 parameters are
+ * 		permitted.
+ *
+ * @return True is the method was successfully called.
+ * 		If the method was called but the return value could not be converted
+ * 		to the ReturnType, then this is false.
+ */
+//const ReflectedClass * rClass,
+#define REF_INVOKE(N, unused) \
+		bool ReflectedObject::invokeReturn(std::string methodSignature, \
+				ReflectedObjectPtr & returnVal \
+				GPP_COMMA_IF(N) \
+				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
+{ \
+	const ReflectedClass * rClass \
+		= getReturnTypeFromSignature(methodSignature); \
+	if (rClass == NULL) { \
+		return LookingGlass::INVOKE_BAD_CLASS; \
+	} \
+	cpgf::GVariant resultVal; \
+	bool result = LookingGlass::invokeInternal(this, \
+		methodSignature, true, resultVal, false GPP_COMMA_IF(N) \
+			GPP_REPEAT(N, GPP_COMMA_PARAM, p)) == LookingGlass::INVOKE_SUCCESS; \
+	if (result) { \
+		if (shouldCopyReturnValue(methodSignature)) { \
+			resultVal = copyReturnValue(rClass, resultVal); \
+		} \
+      returnVal = rClass->castTo(resultVal);   \
+	} \
+	return result; \
+}
+
+GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
+
+#undef REF_INVOKE
+
+
+ReflectedObject::operator void *() {
+	return getObject();
+}
+
+
+ReflectedObject::operator cpgf::GVariant(){
+	return cpgf::GVariant(getObject());
+}
+
+
 //ReflectedObjectPtr object(this);
 
 
@@ -171,18 +361,18 @@ void ReflectedClass::loadBaseEnums(std::map<std::string,
 	}
 }
 
-void ReflectedClass::loadBaseOperators(std::map<std::string,
-		const ReflectedOperator *> & baseOperators)
-{
-	//add all operators from this class
-	for (std::map<std::string, const ReflectedOperator *>::const_iterator i
-			= baseOperators.begin(); i != baseOperators.end(); i++) {
-		if (operators.count(i->first) == 0) { //new operator
-			operators[i->first] = new ReflectedOperator(
-					i->second->getOperator(), true);
-		}
-	}
-}
+//void ReflectedClass::loadBaseOperators(std::map<std::string,
+//		const ReflectedOperator *> & baseOperators)
+//{
+//	//add all operators from this class
+//	for (std::map<std::string, const ReflectedOperator *>::const_iterator i
+//			= baseOperators.begin(); i != baseOperators.end(); i++) {
+//		if (operators.count(i->first) == 0) { //new operator
+//			operators[i->first] = new ReflectedOperator(
+//					i->second->getOperator(), true);
+//		}
+//	}
+//}
 
 void ReflectedClass::loadBaseFields(std::map<std::string,
 		const ReflectedField *> & baseFields)
@@ -223,7 +413,7 @@ void ReflectedClass::loadBaseClasses(std::map<std::string,
 				// add all methods, fields, operators, enums
 				loadBaseMethods(classes[signature]->methods);
 				loadBaseFields(classes[signature]->fields);
-				loadBaseOperators(classes[signature]->operators);
+//				loadBaseOperators(classes[signature]->operators);
 				loadBaseEnums(classes[signature]->enums);
 
 			}
@@ -237,6 +427,70 @@ void ReflectedClass::loadBaseClasses(std::map<std::string,
 
 	}
 
+}
+
+
+/**
+ * Keeps a copy of the objects being created so that values cast to
+ * this class that reference the same object will not delete the object
+ * at the wrong time.
+ *
+ * @param ptr Pointer to store as a weak reference
+ */
+void ReflectedClass::storeObjectPtr(ReflectedObjectPtr ptr) const {
+//	ReflectedObjectReference ror = ReflectedObjectReference::getInstance();
+//	ror.addObject(this, ptr);
+
+	boost::weak_ptr<ReflectedObject> cPointer(ptr);
+	createdObjects[ptr.get()->getObject()] = cPointer;
+}
+
+/**
+ * Finds if this object already exists. If so, returns a strong pointer to
+ * it.  Otherwise, returns NULL.
+ *
+ * @param ptr Pointer to find
+ * @return Reference to the pointer or NULL
+ */
+ReflectedObjectPtr ReflectedClass::getStoredObject(void * ptr) const {
+
+//	ReflectedObjectReference ror = ReflectedObjectReference::getInstance();
+//	return ror.getObject(this, ptr);
+//
+
+	std::map<void *, boost::weak_ptr<ReflectedObject> >::iterator found
+	= createdObjects.find(ptr);
+
+	if (found != createdObjects.end()) {
+		ReflectedObjectPtr newPtr(found->second.lock());
+
+		if (newPtr) {
+			return newPtr;
+		}
+		else {
+			//invalid so, delete it and return null
+			createdObjects.erase(found);
+		}
+	}
+	ReflectedObjectPtr nullPtr;
+	return nullPtr;
+}
+
+/**
+ * Determines if this pointer exists already.
+ *
+ * @param ptr Pointer to find.
+ * @return true if it exists.
+ */
+bool ReflectedClass::hasStoredObject(void * ptr) const {
+
+//	ReflectedObjectReference ror = ReflectedObjectReference::getInstance();
+//	return ror.hasObject(this, ptr);
+	bool found = false;
+	if (createdObjects.count(ptr) != 0 && getStoredObject(ptr) != NULL) {
+		found = true;
+	}
+	return found;
 }
 
 
@@ -265,6 +519,7 @@ void ReflectedClass::loadBaseClasses(std::map<std::string,
 		void * object = construct->invoke( \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, p)); \
 		ReflectedObjectPtr ptr (new ReflectedObject(this, object)); \
+		storeObjectPtr(ptr); \
 		return ptr; \
 	} \
 	ReflectedObjectPtr ptr; \
@@ -274,6 +529,35 @@ void ReflectedClass::loadBaseClasses(std::map<std::string,
 GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 
 #undef REF_INVOKE
+
+
+//
+//	bool ReflectedClass::instanceOf(ReflectedObjectPtr rObject) const {
+//
+//}
+
+
+
+ReflectedObjectPtr ReflectedClass::castTo(const cpgf::GVariant & object) const {
+//	if (hasStoredObject(cpgf::fromVariant<void *>(object))) {
+//			return getStoredObject(cpgf::fromVariant<void *>(object));
+//		}
+//
+//	ReflectedObjectPtr ptr(new ReflectedObject(this, object));
+//	return ptr;
+	return castTo(cpgf::fromVariant<void *>(object));
+}
+
+ReflectedObjectPtr ReflectedClass::castTo(void * object) const {
+
+	if (hasStoredObject(object)) {
+		return getStoredObject(object);
+	}
+
+	ReflectedObjectPtr ptr(new ReflectedObject(this, object));
+	return ptr;
+}
+
 
 ///**
 // * Gets the class name
@@ -527,6 +811,37 @@ const ReflectedBaseClass * ReflectedClass::getBaseClass(std::string name) const
 
 
 
+//bool instanceOf(const ReflectedClass * rClass, ReflectedObjectPtr rObject) {
+//	if (rClass != NULL) {
+//		return rClass->instanceOf(rObject);
+//	}
+//
+//	return false;
+//}
+
+
+
+bool operator==(ReflectedObjectPtr const & p1, ReflectedObjectPtr const & p2) {
+	if (p1 == NULL) {
+		if (p2 == NULL) {
+			return true;
+		}
+		if (p2.get()->getObject() == NULL) {
+			return true;
+		}
+
+		return false;
+	}
+
+	if (p2 == NULL) {
+		if (p1.get()->getObject() == NULL) {
+			return true;
+		}
+		return false;
+	}
+
+	return p1.get()->getObject() == p2.get()->getObject();
+}
 
 
 }

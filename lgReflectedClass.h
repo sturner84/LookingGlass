@@ -11,20 +11,80 @@
 #include <cpgf/gmetaclass.h>
 #include <map>
 #include <string>
+#include <cstddef>
 #include "lgReflectedDataBase.h"
 #include "lgReflectedItems.h"
 #include <boost/shared_ptr.hpp>
+#include <boost/weak_ptr.hpp>
 
 namespace cpptesting {
 
 class ReflectedClass;
-class ReflectedObject;
+class ReflectedObjectPtr;
 class ReflectedData;
 
-/**
- * @brief shared pointer to a ReflectedObject variable
- */
-typedef boost::shared_ptr<ReflectedObject> ReflectedObjectPtr;
+
+
+///**
+// * @class ReflectedObjectReference
+// * @brief Records the references to all objects created by each of the
+// * reflected classes.
+// *
+// * Records the references to all objects created by each of the
+// * reflected classes. This allows references to those objects to be returned
+// * from method and not prematurely deleted.
+// */
+//class ReflectedObjectReference {
+//	friend class ReflectedClass;
+//
+//private:
+//	ReflectedObjectReference();
+//
+//	static ReflectedObjectReference instance; //singleton
+//
+//	std::map<const ReflectedClass *,
+//		std::map<void *, boost::weak_ptr<ReflectedObject> > > createdObjects;
+//protected:
+//	/**
+//	 * Gets the instance of this class.
+//	 * @return The single instance of this class
+//	 */
+//	static ReflectedObjectReference getInstance();
+//
+//	/**
+//	 * Keeps a copy of the objects being created so that values cast to
+//	 * this class that reference the same object will not delete the object
+//	 * at the wrong time.
+//	 *
+//	 * @param rClass Class that is the type of the object
+//	 * @param ptr Pointer to store as a weak reference
+//	 */
+//	void addObject(const ReflectedClass * rClass, ReflectedObjectPtr rObject);
+//
+//	/**
+//	 * Finds if this object already exists. If so, returns a strong pointer to
+//	 * it.  Otherwise, returns NULL.
+//	 *
+//	 * @param rClass Class that is the type of the object
+//	 * @param ptr Pointer to find
+//	 * @return Reference to the pointer or NULL
+//	 */
+//	ReflectedObjectPtr getObject(const ReflectedClass * rClass,
+//			void * ptr);
+//
+//	/**
+//	 * Determines if this pointer exists already.
+//	 *
+//	 * @param rClass Class that is the type of the object
+//	 * @param ptr Pointer to find.
+//	 * @return true if it exists.
+//	 */
+//	bool hasObject(const ReflectedClass * rClass,
+//			void * ptr);
+//public:
+//
+//};
+
 
 
 /**
@@ -108,6 +168,7 @@ protected:
 	 * Reference to the object returned from instantiating the reflected class.
 	 */
 	void * mObject;
+//	cpgf::GVariant gObject;
 
 	/**
 	 * @brief Constructor for the object
@@ -116,6 +177,46 @@ protected:
 	 * @param obj Object returned from creating the reflected class
 	 */
 	ReflectedObject(const ReflectedClass * c, void * obj);
+
+	/**
+	 * @brief Constructor for the object
+	 *
+	 * @param c Class from which this was created
+	 * @param obj Object returned from creating the reflected class
+	 */
+//	ReflectedObject(const ReflectedClass * c, const cpgf::GVariant & obj);
+
+
+
+	/**
+	 * Gets the reflected class that is referred to in the signature (if
+	 * possible).  Returns NULL if it is not a reflected type.
+	 *
+	 * @param signature Signature of the function/method
+	 * @return Reflected class or NULL
+	 */
+	const ReflectedClass * getReturnTypeFromSignature(std::string signature);
+
+	/**
+	 * Determines if the return value should be copied (i.e. it isn't a
+	 * reference or a pointer.
+	 *
+	 * @param signature Signature of the function/method
+	 * @return true if it should be copied
+	 */
+	bool shouldCopyReturnValue(std::string signature);
+
+	/**
+	 * Creates a copy of the Return Value
+	 *
+	 * @param className the name of the class whose value is being copied
+	 * @param returnValue value to copy
+	 * @return a copy of the parameter or, if it shouldn't be copied,
+	 * 	the original value
+	 */
+	cpgf::GVariant copyReturnValue(const ReflectedClass * rClass,
+			cpgf::GVariant returnValue);
+
 public:
 
 	/**
@@ -198,6 +299,37 @@ public:
 
 #undef REF_INVOKE
 
+
+
+	//TODO check with * to object and ** to object
+	/**
+	 * Invokes a method of this object with the specified parameters
+	 * and returns the result
+	 *  (through the returnVal parameter).
+	 *  The signature for this method is:
+	 *  	bool invokeReturn(string methodSignature, <ReturnType> returnVal,
+	 *  		GVariant p0, ...)
+	 *  		Most types can be used for GVariant
+	 *
+	 * @param methodSignature Method to call (i.e. int foo(double x, char y))
+	 * @param returnVal Value returned from the method Undefined if success = false
+	 * @param p<1-28> Parameter for the method.  Currently up to 28 parameters are
+	 * 		permitted.
+	 *
+	 * @return True is the method was successfully called.
+	 * 		If the method was called but the return value could not be converted
+	 * 		to the ReturnType, then this is false.
+	 */
+#define REF_INVOKE(N, unused) \
+		bool invokeReturn(std::string methodSignature, \
+				ReflectedObjectPtr & returnVal \
+				GPP_COMMA_IF(N) \
+				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
+
+	GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
+
+#undef REF_INVOKE
+
 	//	bool invokeReturnTest(std::string methodSignature,
 	//			int & returnVal);
 
@@ -242,6 +374,15 @@ public:
 	template <typename ValueType>
 	bool setField(ValueType& val, std::string signature);
 
+	/**
+	 * Casts the ReflectedObject to a void * for method calls.
+	 */
+	operator void *();
+
+	/**
+	 * Casts the ReflectedObject to a GVariant for method calls.
+	 */
+	operator cpgf::GVariant();
 };
 
 
@@ -251,6 +392,8 @@ public:
  */
 class ReflectedClass : public ReflectedDataBase, public ReflectedItem {
 	friend class ReflectedData;
+	friend class ReflectedObject;
+	friend class LookingGlass;
 
 protected:
 	/**
@@ -268,6 +411,8 @@ protected:
 	 */
 	std::map<std::string, const ReflectedBaseClass *> baseClasses;
 
+
+	mutable std::map<void *, boost::weak_ptr<ReflectedObject> > createdObjects;
 
 	/**
 	 * Loads data from the reflected class into the maps (like constructors)
@@ -294,17 +439,61 @@ protected:
 	virtual void loadBaseEnums(std::map<std::string, const ReflectedEnum *>
 	& baseEnums);
 
-	/**
-	 * Loads the operators from the base class
-	 */
-	virtual void loadBaseOperators(std::map<std::string,
-			const ReflectedOperator *> & baseOperators);
+//	/**
+//	 * Loads the operators from the base class
+//	 */
+//	virtual void loadBaseOperators(std::map<std::string,
+//			const ReflectedOperator *> & baseOperators);
 
 	/**
 	 * Loads the fields from the base class
 	 */
 	virtual void loadBaseFields(std::map<std::string, const ReflectedField *>
 	& baseFields);
+
+	/**
+	 * Tries to cast the object to this class.
+	 *
+	 * @param object Object to cast
+	 * @return a pointer to an object from this class or NULL if the cast
+	 *   fails
+	 */
+	ReflectedObjectPtr castTo(const cpgf::GVariant & object) const;
+
+	/**
+	 * Tries to cast the object to this class.
+	 *
+	 * @param object Object to cast
+	 * @return a pointer to an object from this class or NULL if the cast
+	 *   fails
+	 */
+	ReflectedObjectPtr castTo(void * object) const;
+
+	/**
+	 * Keeps a copy of the objects being created so that values cast to
+	 * this class that reference the same object will not delete the object
+	 * at the wrong time.
+	 *
+	 * @param ptr Pointer to store as a weak reference
+	 */
+	void storeObjectPtr(ReflectedObjectPtr ptr) const;
+
+	/**
+	 * Finds if this object already exists. If so, returns a strong pointer to
+	 * it.  Otherwise, returns NULL.
+	 *
+	 * @param ptr Pointer to find
+	 * @return Reference to the pointer or NULL
+	 */
+	ReflectedObjectPtr getStoredObject(void * ptr) const;
+
+	/**
+	 * Determines if this pointer exists already.
+	 *
+	 * @param ptr Pointer to find.
+	 * @return true if it exists.
+	 */
+	bool hasStoredObject(void * ptr) const;
 
 public:
 
@@ -347,6 +536,18 @@ public:
 	GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 
 #undef REF_INVOKE
+
+//	/**
+//	 * Determines if rObject is an instance of this class
+//	 *
+//	 * @param rObject object to check
+//	 *
+//	 * @return true if rObject is an instance of this class
+//	 */
+//	bool instanceOf(ReflectedObjectPtr rObject) const;
+
+
+
 
 	//	/**
 	//	 * Gets the class name
@@ -784,7 +985,8 @@ bool ReflectedObject::getField(ValueType& val, std::string signature)
 	{
 		const ReflectedField* field = mClass->getField(signature);
 		if (field->isAccessible()) {
-			val = (cpgf::fromVariant<ValueType>(field->getField()->get(mObject)));
+			val = (cpgf::fromVariant<ValueType>(field->getField()->get(
+					getObject())));
 			success = true;
 		}
 	}
@@ -804,7 +1006,7 @@ bool ReflectedObject::setField(ValueType& val, std::string signature)
 		{
 			if (field->isAccessible())
 			{
-				field->getField()->set(mObject, val);
+				field->getField()->set(getObject(), val);
 				success = true;
 			}
 		}
@@ -819,10 +1021,71 @@ bool ReflectedObject::setField(ValueType& val, std::string signature)
 
 
 
+/**
+ * @class ReflectedObjectPtr
+ * @brief Shared pointer to a ReflectedObject variable
+ */
+//typedef boost::shared_ptr<ReflectedObject> ReflectedObjectPtr;
+
+class ReflectedObjectPtr : public boost::shared_ptr<ReflectedObject> {
+
+public:
+	ReflectedObjectPtr() : boost::shared_ptr<ReflectedObject>() { };
+
+	explicit ReflectedObjectPtr(ReflectedObject * p) :
+		boost::shared_ptr<ReflectedObject>(p) { }
+
+	~ReflectedObjectPtr() {};
+
+	ReflectedObjectPtr(boost::shared_ptr<ReflectedObject> const & r) : boost::shared_ptr<ReflectedObject>(r) { }
+//	ReflectedObjectPtr(ReflectedObjectPtr const & r) :
+//		boost::shared_ptr<ReflectedObject>(r) { }
+
+	ReflectedObjectPtr(boost::shared_ptr<ReflectedObject> const & r, element_type * p) :
+		boost::shared_ptr<ReflectedObject>(r, p) { }
+
+	explicit ReflectedObjectPtr(boost::weak_ptr<ReflectedObject> const & r) :
+		boost::shared_ptr<ReflectedObject>(r) { }
+
+	ReflectedObjectPtr & operator=(boost::shared_ptr<ReflectedObject> const & r) {
+		boost::shared_ptr<ReflectedObject>::operator=(r);
+		return *this;
+	}
+
+	ReflectedObjectPtr & operator=(ReflectedObjectPtr const & r) {
+		boost::shared_ptr<ReflectedObject>::operator=(r);
+		return *this;
+	}
+
+	/**
+	 * Cast operator to GVariant - Gets the method pointer and not not
+	 * smart pointer
+	 */
+	operator cpgf::GVariant() { return cpgf::GVariant(get()->getObject()); }
+};
+
+
+///**
+// * Determines if rObject is an instance of rClass
+// *
+// * @param rClass Potential class of the object
+// * @param rObject object to check
+// *
+// * @return true if rObject is an instance of rClass
+// */
+//bool instanceOf(const ReflectedClass * rClass, ReflectedObjectPtr rObject);
+
+
+bool operator==(ReflectedObjectPtr const & p1, ReflectedObjectPtr const & p2);
+
 
 
 
 }
+
+
+
+
 
 
 

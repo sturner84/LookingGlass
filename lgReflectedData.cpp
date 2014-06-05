@@ -16,6 +16,11 @@ namespace cpptesting {
 ReflectedData ReflectedData::instance; //singleton
 
 
+const std::string REMOVE_MODS = "(&)|(\\*)|(const)|(volatile)";
+const std::string REMOVE_MODS_REPLACE = "(?1)(?2)(?3)(?4)";
+//TODO
+
+
 //private constructor
 ReflectedData::ReflectedData()
 {
@@ -175,6 +180,29 @@ const ReflectedClass* ReflectedData::getClass(std::string signature) const
 	}
 	return NULL;
 }
+
+
+/**
+ * Gets a class that corresponds to the type or NULL.
+ *
+ * This ignores modifiers like const or volitile and * and & and returns
+ * the class if it is being reflected
+ *
+ * @return a ReflectedClass object or NULL
+ */
+const ReflectedClass * ReflectedData::getClassFromType(std::string signature)
+	const {
+	std::string newSig = signature;
+
+	boost::regex matcher(REMOVE_MODS);
+	std::string newType;
+
+	newSig = boost::regex_replace(newSig, matcher, REMOVE_MODS_REPLACE,
+			boost::match_default | boost::format_all);
+
+	return getClass(StringUtil::trim(newSig));
+}
+
 
 
 std::vector<ReflectedClass *> ReflectedData::getClasses()

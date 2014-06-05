@@ -14,6 +14,21 @@ namespace cpptesting {
 int ReflectedDataBase::MAX_SIMILAR = 5;
 
 
+/**
+ * Determines if the name of the method meets the pattern of one of the
+ * auto-generated support methods. If so, it should be excluded from the
+ * normal lists of methods
+ *
+ * @param methodName Name of the method
+ * @return true if it is one of the auto-generated support methods. See
+ * isArraySetterSignature and isCopyFunctionSignature in ReflectionUtil
+ */
+bool ReflectedDataBase::isNonReflectedMethod(std::string methodName) {
+	return ReflectionUtil::isArraySetterSignature(methodName)
+		|| ReflectionUtil::isCopyFunctionSignature(methodName);
+}
+
+
 void ReflectedDataBase::loadData(const cpgf::GMetaClass* gclass)
 {
 	std::string signature;
@@ -22,11 +37,17 @@ void ReflectedDataBase::loadData(const cpgf::GMetaClass* gclass)
 	//TODO fix class name -> move into functions
 	for (size_t k = 0; k < gclass->getMethodCount(); k++)
 	{
-		signature = ReflectionUtil::createFunctionSignature(
-				gclass->getMethodAt(k));
+		signature = ReflectionUtil::correctSignature(
+				ReflectionUtil::createFunctionSignature(gclass->getMethodAt(k)));
 //		methods[signature] = gclass->getMethodAt(k);
-		methods[ReflectionUtil::correctSignature(signature)]
-		          = new ReflectedMethod(gclass->getMethodAt(k), false);
+		if (isNonReflectedMethod(signature)) {
+			nonReflectedMethods[signature] = new ReflectedMethod(
+					gclass->getMethodAt(k), false);
+		}
+		else {
+			methods[signature] = new ReflectedMethod(gclass->getMethodAt(k),
+					false);
+		}
 //
 //		std::cout << signature << " "<< ReflectionUtil::correctSignature(signature) << "\n";
 //		std::cout.flush();
@@ -44,17 +65,17 @@ void ReflectedDataBase::loadData(const cpgf::GMetaClass* gclass)
 //		std::cout.flush();
 	}
 
-	for (size_t i = 0; i < gclass->getOperatorCount(); i++)
-	{
-		signature = ReflectionUtil::createOperatorSignature(
-				gclass->getOperatorAt(i));
-//		operators[signature] = gclass->getOperatorAt(i);
-		operators[ReflectionUtil::correctSignature(signature)]
-		            = new ReflectedOperator(gclass->getOperatorAt(i), false);
-//
-//		std::cout << signature << " "<< ReflectionUtil::correctSignature(signature) << "\n";
-//		std::cout.flush();
-	}
+//	for (size_t i = 0; i < gclass->getOperatorCount(); i++)
+//	{
+//		signature = ReflectionUtil::createOperatorSignature(
+//				gclass->getOperatorAt(i));
+////		operators[signature] = gclass->getOperatorAt(i);
+//		operators[ReflectionUtil::correctSignature(signature)]
+//		            = new ReflectedOperator(gclass->getOperatorAt(i), false);
+////
+////		std::cout << signature << " "<< ReflectionUtil::correctSignature(signature) << "\n";
+////		std::cout.flush();
+//	}
 
 //	for (size_t i = 0; i < gclass->getConstructorCount(); i++)
 //	{
@@ -104,11 +125,18 @@ ReflectedDataBase::~ReflectedDataBase()
 		delete it->second;
 	}
 
-	for (std::map<std::string, const ReflectedOperator*>::iterator it
-			= operators.begin(); it != operators.end(); it++)
+	for (std::map<std::string, const ReflectedMethod *>::iterator it
+			= nonReflectedMethods.begin(); it != nonReflectedMethods.end(); it++)
 	{
 		delete it->second;
 	}
+
+
+	//	for (std::map<std::string, const ReflectedOperator*>::iterator it
+//			= operators.begin(); it != operators.end(); it++)
+//	{
+//		delete it->second;
+//	}
 }
 
 bool ReflectedDataBase::doesMethodExist(std::string functionSignature,
@@ -148,55 +176,88 @@ const ReflectedMethod * ReflectedDataBase::getMethod(std::string signature) cons
 
 
 
-
-
-bool ReflectedDataBase::doesOperatorExist(std::string functionSignature,
+bool ReflectedDataBase::doesNonReflectedMethodExist(
+		std::string functionSignature,
 		VisibilityAccessType vis, bool inherited) const
 {
-	return exists(enums, ReflectionUtil::correctSignature(functionSignature),
+	return exists(nonReflectedMethods,
+			ReflectionUtil::correctSignature(functionSignature),
 			vis, inherited);
 
-//	const ReflectedOperator * m = getItem(operators,
-//			ReflectionUtil::correctSignature(functionSignature));
-//	return (m && (inherited || !m->isInherited()));
-	//return (operators.count(ReflectionUtil::correctSignature(functionSignature)) == 1);
 }
 
-size_t ReflectedDataBase::getOperatorCount(VisibilityAccessType vis,
+
+
+
+size_t ReflectedDataBase::getNonReflectedMethodCount(VisibilityAccessType vis,
 		bool inherit) const
 {
-	return countItems(operators, vis, inherit);
+	return countItems(nonReflectedMethods, vis, inherit);
 }
 
-const std::vector<std::string> ReflectedDataBase::getOperatorNames(
+const std::vector<std::string> ReflectedDataBase::getNonReflectedMethodNames(
 		VisibilityAccessType vis, bool inherit) const
 {
-	return getNames(operators, vis, inherit);
+	return getNames(nonReflectedMethods, vis, inherit);
 }
 
-const ReflectedOperator * ReflectedDataBase::getOperator(std::string signature) const
+
+const ReflectedMethod * ReflectedDataBase::getNonReflectedMethod(
+		std::string signature) const
 {
-	return getItem(operators, ReflectionUtil::correctSignature(signature));
+	return getItem(nonReflectedMethods,
+			ReflectionUtil::correctSignature(signature));
 }
 
 
-std::vector<const ReflectedOperator *> ReflectedDataBase::getOperators(
-		VisibilityAccessType vis, bool inherited)
-{
-	return getItems(operators, vis, inherited);
-}
 
-std::vector<const ReflectedOperator *> ReflectedDataBase::getClosestOperators(
-		std::string name, VisibilityAccessType vis, bool inherited, int count)
-{
-	return getClosest(operators, name, vis, inherited, count);
-}
-
-std::string ReflectedDataBase::getClosestOperatorsString(
-		std::string name, VisibilityAccessType vis, bool inherited, int count)
-{
-	return getClosestString(operators, name, vis, inherited, count);
-}
+//bool ReflectedDataBase::doesOperatorExist(std::string functionSignature,
+//		VisibilityAccessType vis, bool inherited) const
+//{
+//	return exists(operators, ReflectionUtil::correctSignature(functionSignature),
+//			vis, inherited);
+//
+////	const ReflectedOperator * m = getItem(operators,
+////			ReflectionUtil::correctSignature(functionSignature));
+////	return (m && (inherited || !m->isInherited()));
+//	//return (operators.count(ReflectionUtil::correctSignature(functionSignature)) == 1);
+//}
+//
+//size_t ReflectedDataBase::getOperatorCount(VisibilityAccessType vis,
+//		bool inherit) const
+//{
+//	return countItems(operators, vis, inherit);
+//}
+//
+//const std::vector<std::string> ReflectedDataBase::getOperatorNames(
+//		VisibilityAccessType vis, bool inherit) const
+//{
+//	return getNames(operators, vis, inherit);
+//}
+//
+//const ReflectedOperator * ReflectedDataBase::getOperator(std::string signature) const
+//{
+//	return getItem(operators, ReflectionUtil::correctSignature(signature));
+//}
+//
+//
+//std::vector<const ReflectedOperator *> ReflectedDataBase::getOperators(
+//		VisibilityAccessType vis, bool inherited)
+//{
+//	return getItems(operators, vis, inherited);
+//}
+//
+//std::vector<const ReflectedOperator *> ReflectedDataBase::getClosestOperators(
+//		std::string name, VisibilityAccessType vis, bool inherited, int count)
+//{
+//	return getClosest(operators, name, vis, inherited, count);
+//}
+//
+//std::string ReflectedDataBase::getClosestOperatorsString(
+//		std::string name, VisibilityAccessType vis, bool inherited, int count)
+//{
+//	return getClosestString(operators, name, vis, inherited, count);
+//}
 
 
 //ignore values, just look for name
