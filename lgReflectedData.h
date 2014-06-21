@@ -17,7 +17,7 @@
 #include "lgReflectedDataBase.h"
 
 
-//TODO include a getter for all methods/fields/etc.?
+
 
 namespace cpptesting {
 
@@ -26,16 +26,36 @@ class ReflectedData : public ReflectedDataBase {
 private:
 	static ReflectedData instance; //singleton
 
-	std::map<std::string, ReflectedClass *> classes;
-	std::map<std::string, ReflectedNamespace *> namespaces; //TODO not used yet
-
 	//private constructor
 	ReflectedData();
 	bool loaded;
 
+
+protected:
+
+	std::map<std::string, ReflectedClass *> classes;
+
 	virtual void loadData();
-	virtual void loadData(const cpgf::GMetaClass* gclass);
+	virtual void loadData(const cpgf::GMetaClass* gclass, bool isGlobal);
 	virtual void loadBaseClasses();
+
+	/**
+	 * Loads a single non-reflected item like private methods, non-reflected
+	 * base classes, etc.
+	 *
+	 * @param nrItem item to load
+	 */
+	virtual	void loadNonReflectedData(const cpgf::GMetaNonReflectedItem * nrItem);
+
+
+	/**
+	 * Searches through all classes and inner classes to find a class.
+	 * Assumes the signature is in the form <outer>::<inner>::<inner inner>...
+	 *
+	 * @param signature Signature of the class
+	 * @return The reflected class or NULL if it is not found
+	 */
+	virtual ReflectedClass * findClass(std::string signature) const;
 
 public:
 
@@ -58,9 +78,29 @@ public:
 	 * 		takes an int and double as parameters
 	 *
 	 *  @param functionSignature Signature of the function
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
+
 	 *  @return true is that function exists
 	 */
-	bool doesFunctionExist(std::string functionSignature) const;
+	virtual	bool doesFunctionExist(std::string functionSignature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
@@ -68,7 +108,7 @@ public:
 	 *
 	 * @return the number of function signatures
 	 */
-	size_t getFunctionCount() const;
+	virtual	size_t getFunctionCount() const;
 
 
 	/**
@@ -76,25 +116,63 @@ public:
 	 *
 	 * @return a list of function signatures
 	 */
-	const std::vector<std::string> getFunctionNames() const;
+	virtual	const std::vector<std::string> getFunctionNames() const;
 
 	/**
 	 * Gets a function that corresponds to the signature or NULL
 	 *
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
+
 	 * @return a metadata object or NULL
 	 */
-	const ReflectedMethod * getFunction(std::string signature) const;
+	virtual	const ReflectedMethod * getFunction(std::string signature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 
 	/**
 	 * Gets a list of all functions
 	 *
-	 * @param inherited True if inherited functions should be included.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *
 	 * @return List of functions
 	 */
-	virtual std::vector<const ReflectedMethod *> getFunctions();
+	virtual std::vector<const ReflectedMethod *> getFunctions(
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 	/**
 	 * Gets a list of the closest functions to the name provided
@@ -128,10 +206,28 @@ public:
 	 * Determines if a value (variable or constant) exists with this signature
 	 *
 	 * @param signature Signature of the value (i.e. int x or const double y)
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
 	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return true if the field exists
 	 */
-	virtual bool doesVariableExist(std::string signature) const;
+	virtual bool doesVariableExist(std::string signature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
@@ -139,7 +235,7 @@ public:
 	 *
 	 * @return number of variables with a global scope.
 	 */
-	size_t getGlobalVariableCount() const;
+	virtual	size_t getGlobalVariableCount() const;
 
 
 	/**
@@ -149,14 +245,14 @@ public:
 	 * @return a list of the signatures of variables
 	 * with a global scope.
 	 */
-	const std::vector<std::string> getGlobalVariableNames() const;
+	virtual	const std::vector<std::string> getGlobalVariableNames() const;
 
 	/**
 	 * Gets the number of constants declared with a global scope
 	 *
 	 * @return number of constants with a global scope.
 	 */
-	size_t getGlobalConstantCount() const;
+	virtual	size_t getGlobalConstantCount() const;
 
 	/**
 	 * Gets the signatures of constants declared with a
@@ -165,7 +261,7 @@ public:
 	 * @return a list of the signatures of constants
 	 * with a global scope.
 	 */
-	const std::vector<std::string> getGlobalConstantNames() const;
+	virtual	const std::vector<std::string> getGlobalConstantNames() const;
 	//all variables and fields
 
 
@@ -174,7 +270,7 @@ public:
 	 *
 	 * @return number of constants and variables with a global scope.
 	 */
-	size_t getGlobalFieldCount() const;
+	virtual	size_t getGlobalFieldCount() const;
 
 	/**
 	 * Gets the signatures of constants and variables declared with a
@@ -183,25 +279,61 @@ public:
 	 * @return a list of the signatures of constants and variables
 	 * with a global scope.
 	 */
-	const std::vector<std::string> getGlobalFieldNames() const;
+	virtual	const std::vector<std::string> getGlobalFieldNames() const;
 
 
 	/**
 	 * Gets a variable or constant that corresponds to the signature or NULL
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
 	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return a metadata object or NULL
 	 */
-	const ReflectedField * getGlobalField(std::string signature) const;
+	virtual	const ReflectedField * getGlobalField(std::string signature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
 	 * Gets a list of all global variables
 	 *
 	 * @param inherited True if inherited variables should be included.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
 	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return List of variables in the class
 	 */
-	virtual std::vector<const ReflectedField *> getGlobalFields();
+	virtual std::vector<const ReflectedField *> getGlobalFields(
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 	/**
 	 * Gets a list of the closest variables to the name provided
@@ -234,34 +366,64 @@ public:
 	/**
 	 * Gets the number of classes
 	 *
+	 *	This does not include inner classes.
+	 *
 	 * @return number of classes
 	 */
-	size_t getClassCount() const;
+	virtual	size_t getClassCount() const;
 
 	/**
 	 * Checks to see if a class exists using the class's name.
 	 *
 	 *
 	 *
-	 *  @param name Name of the class
+	 * @param name Name of the class
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierTemplate
+	 *
+	 *	If trying to find an inner class, the name should be in the form:
+	 *		<outer>::<inner>
+	 * TODO
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *  @return true is that class exists
 	 */
-	bool doesClassExist(std::string name) const;
+	virtual	bool doesClassExist(std::string name,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
 	 * Gets a list of all classes that are being reflected
 	 *
+	 * This does not include inner classes
+	 *
 	 * @return a list of class names
 	 */
-	const std::vector<std::string> getClassNames() const;
+	virtual	const std::vector<std::string> getClassNames() const;
 
 	/**
 	 * Gets a class that corresponds to the name or NULL
 	 *
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierTemplate
+	 *
+	 *	If trying to find an inner class, the name should be in the form:
+	 *		<outer>::<inner>
+	 * TODO
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return a ReflectedClass object or NULL
 	 */
-	const ReflectedClass * getClass(std::string signature) const;
+	virtual	const ReflectedClass * getClass(std::string signature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
@@ -270,9 +432,14 @@ public:
 	 * This ignores modifiers like const or volitile and * and & and returns
 	 * the class if it is being reflected
 	 *
+	 *	If trying to find an inner class, the name should be in the form:
+	 *		<outer>::<inner>
+	 *
+	 *	TODO modify this so that it finds inner classes reliably
+	 *
 	 * @return a ReflectedClass object or NULL
 	 */
-	const ReflectedClass * getClassFromType(std::string signature) const;
+	virtual	const ReflectedClass * getClassFromType(std::string signature) const;
 
 
 
@@ -281,12 +448,17 @@ public:
 	 *
 	 * @param inherited True if inherited classes should be included.
 	 *
+	 * This does not include inner classes.
+	 *
 	 * @return List of classes
 	 */
-	virtual std::vector<ReflectedClass *> getClasses();
+	virtual std::vector<ReflectedClass *> getClasses(int modifiers,
+			bool allowMoreMods);
 
 	/**
 	 * Gets a list of the closest classes to the name provided
+	 *
+	 * This does not include inner classes.
 	 *
 	 * @param name Name to find
 	 * @param inherited True if inherited classes should be included.
@@ -301,6 +473,8 @@ public:
 
 	/**
 	 * Gets a string comparing the name to the closest names found
+	 *
+	 * This does not include inner classes.
 	 *
 	 * @param name Name to find
 	 * @param inherited True if inherited values should be included.
@@ -319,14 +493,14 @@ public:
 	 *
 	 * @return number of namespaces
 	 */
-	size_t getNamespaceCount() const;
+	virtual	size_t getNamespaceCount() const;
 
 	/**
 	 * Gets a list of all namespaces that are being reflected
 	 *
 	 * @return a list of namespaces
 	 */
-	const std::vector<std::string> getNamespaceNames() const;
+	virtual	const std::vector<std::string> getNamespaceNames() const;
 
 	/**
 	 * Checks to see if a namespace exists using the namespace's full name.
@@ -337,7 +511,7 @@ public:
 	 *  @param name Full name of the namespace
 	 *  @return true is that namespace exists
 	 */
-	bool doesNamespaceExist(std::string name) const;
+	virtual	bool doesNamespaceExist(std::string name) const;
 
 	/**
 	 * Gets a namespace that corresponds to the name or NULL
@@ -347,7 +521,7 @@ public:
 	 *
 	 * @return a ReflectedNamespace object or NULL
 	 */
-	ReflectedNamespace * getNamespace(std::string name) const;
+	virtual	ReflectedNamespacePtr getNamespace(std::string name) const;
 
 
 	/**
@@ -357,7 +531,7 @@ public:
 	 *
 	 * @return List of namespaces
 	 */
-	virtual std::vector<ReflectedNamespace *> getNamespaces();
+	virtual std::vector<ReflectedNamespacePtr> getNamespaces();
 
 	/**
 	 * Gets a list of the closest namespaces to the name provided
@@ -369,7 +543,7 @@ public:
 	 *
 	 * @return List of namespaces that are close in name to the name given
 	 */
-	virtual std::vector<ReflectedNamespace *> getClosestNamespaces(
+	virtual std::vector<ReflectedNamespacePtr> getClosestNamespaces(
 			std::string name, int count = MAX_SIMILAR);
 
 

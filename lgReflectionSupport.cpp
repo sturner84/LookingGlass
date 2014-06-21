@@ -337,7 +337,7 @@ bool LookingGlass::invokeFunction(std::string functionSignature \
 				const ReflectedClass* c = object->getClass();
 				if (c->doesMethodExist(signature, All_Access, true))
 				{
-					func = c->getMethod(signature);
+					func = c->getMethod(signature, ReflectedData::ALLOW_ALL_MODIFIERS, false);
 				}
 				else
 				{

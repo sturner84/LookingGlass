@@ -116,15 +116,15 @@ public:
 	 *
 	 * @param c Class to use as a base class
 	 */
-	ReflectedBaseClass(const ReflectedClass * c);
+	ReflectedBaseClass(const ReflectedClass * c, int modifiers);
 
 	/**
 	 * Creates an object that refers to a class that was not reflected
 	 *
-	 * @param nName Name of the class
+	 * @param sig Signature of the class
 	 * @param vis Visibility of the class
 	 */
-	ReflectedBaseClass(std::string nName, VisibilityType vis);
+	ReflectedBaseClass(std::string sig, VisibilityType vis, int modifiers);
 
 	/**
 	 * Gets a reference to the base class if it is being reflected.  Otherwise
@@ -132,7 +132,7 @@ public:
 	 *
 	 * @return reflected class or NULL
 	 */
-	const ReflectedClass * getClass() const;
+	virtual	const ReflectedClass * getClass() const;
 
 	//	/**
 	//	 * Gets the name of the class
@@ -147,6 +147,24 @@ public:
 	 * @return true if reflected
 	 */
 	virtual bool isAccessible() const;
+
+	/**
+	 * Determines if this base class is virtual or not. T
+	 * @return true if virtual
+	 */
+	virtual bool isVirtual() const {
+		return (mods & cpgf::metaModifierVirtual) != 0;
+	}
+
+
+	/**
+	 * TODO not currently supported
+	 * Determines if this base class is a template.
+	 * @return true if a template
+	 */
+	virtual bool isTemplate() const {
+		return (mods & cpgf::metaModifierTemplate) != 0;
+	}
 };
 
 
@@ -195,7 +213,7 @@ protected:
 	 * @param signature Signature of the function/method
 	 * @return Reflected class or NULL
 	 */
-	const ReflectedClass * getReturnTypeFromSignature(std::string signature);
+	virtual	const ReflectedClass * getReturnTypeFromSignature(std::string signature);
 
 	/**
 	 * Determines if the return value should be copied (i.e. it isn't a
@@ -204,7 +222,7 @@ protected:
 	 * @param signature Signature of the function/method
 	 * @return true if it should be copied
 	 */
-	bool shouldCopyReturnValue(std::string signature);
+	virtual	bool shouldCopyReturnValue(std::string signature);
 
 	/**
 	 * Creates a copy of the Return Value
@@ -214,7 +232,7 @@ protected:
 	 * @return a copy of the parameter or, if it shouldn't be copied,
 	 * 	the original value
 	 */
-	cpgf::GVariant copyReturnValue(const ReflectedClass * rClass,
+	virtual	cpgf::GVariant copyReturnValue(const ReflectedClass * rClass,
 			cpgf::GVariant returnValue);
 
 public:
@@ -222,14 +240,14 @@ public:
 	/**
 	 * Destroys this instance
 	 */
-	~ReflectedObject();
+	virtual	~ReflectedObject();
 
 	/**
 	 * Gets a reference to the reflected class that this is an instance of
 	 *
 	 * @return reflected class
 	 */
-	const ReflectedClass * getClass() const;
+	virtual	const ReflectedClass * getClass() const;
 
 	/**
 	 * Gets a reference to the object returned from instantiating the class.
@@ -237,14 +255,14 @@ public:
 	 *
 	 * @return A pointer to the raw object
 	 */
-	void * getObject() const;
+	virtual	void * getObject() const;
 
 	/**
 	 * Gets the name of the class
 	 *
 	 * @return Name of the class
 	 */
-	const std::string getClassName();
+	virtual	const std::string getClassName();
 
 
 	/**
@@ -263,7 +281,7 @@ public:
 	 * 		to the ReturnType, then this is false.
 	 */
 #define REF_INVOKE(N, unused) \
-		bool invoke(std::string methodSignature \
+	virtual	bool invoke(std::string methodSignature \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
@@ -291,7 +309,7 @@ public:
 	 */
 #define REF_INVOKE(N, unused) \
 		template <typename ReturnType> \
-		bool invokeReturn(std::string methodSignature, \
+	bool invokeReturn(std::string methodSignature, \
 				ReturnType & returnVal GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
@@ -321,7 +339,7 @@ public:
 	 * 		to the ReturnType, then this is false.
 	 */
 #define REF_INVOKE(N, unused) \
-		bool invokeReturn(std::string methodSignature, \
+	virtual	bool invokeReturn(std::string methodSignature, \
 				ReflectedObjectPtr & returnVal \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
@@ -357,11 +375,30 @@ public:
 	 * @param val value to store the variable in. This is likely a COPY of
 	 * 		the global variable.
 	 * @param signature Signature for the variable (i.e. int x, string n, etc.)
-	 * @param success True if the variable could be accessed. If false, the val
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
+	 * @return True if the variable could be accessed. If false, the val
 	 * 	 	of val is unknown.
 	 */
 	template <typename ValueType>
-	bool getField(ValueType& val, std::string signature);
+	bool getField(ValueType& val, std::string signature,
+			int modifiers = ReflectedDataBase::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 
 	/**
@@ -369,20 +406,39 @@ public:
 	 *
 	 * @param val value to store in the variable.
 	 * @param signature Signature for the variable (i.e. int x, string n, etc.)
-	 * @param success True if the variable could be set.
+	 * * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
+	 * @return True if the variable could be set.
 	 */
 	template <typename ValueType>
-	bool setField(ValueType& val, std::string signature);
+	bool setField(ValueType& val, std::string signature,
+			int modifiers = ReflectedDataBase::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 	/**
 	 * Casts the ReflectedObject to a void * for method calls.
 	 */
-	operator void *();
+	virtual	operator void *();
 
 	/**
 	 * Casts the ReflectedObject to a GVariant for method calls.
 	 */
-	operator cpgf::GVariant();
+	virtual	operator cpgf::GVariant();
 };
 
 
@@ -396,6 +452,7 @@ class ReflectedClass : public ReflectedDataBase, public ReflectedItem {
 	friend class LookingGlass;
 
 protected:
+
 	/**
 	 * Pointer to raw, reflected class
 	 */
@@ -411,6 +468,10 @@ protected:
 	 */
 	std::map<std::string, const ReflectedBaseClass *> baseClasses;
 
+	/**
+	 * Map of inner classes store by their names
+	 */
+	std::map<std::string, ReflectedClass *> innerClasses;
 
 	mutable std::map<void *, boost::weak_ptr<ReflectedObject> > createdObjects;
 
@@ -419,7 +480,7 @@ protected:
 	 *
 	 * @param gclass Reflected class
 	 */
-	virtual void loadData(const cpgf::GMetaClass* gclass);
+	virtual void loadData(const cpgf::GMetaClass* gclass, bool isGlobal);
 
 	/**
 	 * Matches the base classes for this class with a ReflectedClass
@@ -430,14 +491,16 @@ protected:
 	/**
 	 * Loads the methods from the base class
 	 */
-	virtual void loadBaseMethods(std::map<std::string, const ReflectedMethod *>
-	& baseMethods);
+	virtual void loadBaseMethods(const std::map<std::string, const ReflectedMethod *>
+	& baseMethods,  VisibilityType publicVis = Public,
+	VisibilityType protectedVis = Protected);
 
 	/**
 	 * Loads the enums from the base class
 	 */
-	virtual void loadBaseEnums(std::map<std::string, const ReflectedEnum *>
-	& baseEnums);
+	virtual void loadBaseEnums(const std::map<std::string, const ReflectedEnum *>
+	& baseEnums,  VisibilityType publicVis = Public,
+	VisibilityType protectedVis = Protected);
 
 //	/**
 //	 * Loads the operators from the base class
@@ -448,8 +511,45 @@ protected:
 	/**
 	 * Loads the fields from the base class
 	 */
-	virtual void loadBaseFields(std::map<std::string, const ReflectedField *>
-	& baseFields);
+	virtual void loadBaseFields(const std::map<std::string, const ReflectedField *>
+	& baseFields,  VisibilityType publicVis = Public,
+	VisibilityType protectedVis = Protected);
+
+	/**
+	 * Loads a single non-reflected item like private methods, non-reflected
+	 * base classes, etc.
+	 *
+	 * @param nrItem item to load
+	 */
+	virtual	void loadNonReflectedData(const cpgf::GMetaNonReflectedItem * nrItem);
+
+
+	/**
+	 * Loads info about baseclasses that are not-reflected.
+	 *
+	 * In cases where you have protected or private inheritance, this method
+	 * loads the members of that (reflected) class into the inheriting class with
+	 * the appropriate deduction in visibility.
+	 *
+	 * @param allClasses map of all classes being reflected
+	 */
+	virtual void loadNonReflectedBaseClassMembers(
+			const std::map<std::string, ReflectedClass *> & allClasses);
+
+	/**
+	 * Loads info about baseclasses that are not-reflected.
+	 *
+	 * In cases where you have protected or private inheritance, this method
+	 * loads the members of that (reflected) class into the inheriting class with
+	 * the appropriate deduction in visibility.
+	 *
+	 * @param allClasses map of all classes being reflected
+	 * @param signature Name of base class
+	 * @param baseVis visibility of of the base class
+	 */
+	virtual void loadNonReflectedBaseClassMembers(
+			const std::map<std::string, ReflectedClass *> & allClasses,
+			std::string signature, VisibilityType baseVis);
 
 	/**
 	 * Tries to cast the object to this class.
@@ -458,7 +558,7 @@ protected:
 	 * @return a pointer to an object from this class or NULL if the cast
 	 *   fails
 	 */
-	ReflectedObjectPtr castTo(const cpgf::GVariant & object) const;
+	virtual	ReflectedObjectPtr castTo(const cpgf::GVariant & object) const;
 
 	/**
 	 * Tries to cast the object to this class.
@@ -467,7 +567,7 @@ protected:
 	 * @return a pointer to an object from this class or NULL if the cast
 	 *   fails
 	 */
-	ReflectedObjectPtr castTo(void * object) const;
+	virtual	ReflectedObjectPtr castTo(void * object) const;
 
 	/**
 	 * Keeps a copy of the objects being created so that values cast to
@@ -476,7 +576,7 @@ protected:
 	 *
 	 * @param ptr Pointer to store as a weak reference
 	 */
-	void storeObjectPtr(ReflectedObjectPtr ptr) const;
+	virtual	void storeObjectPtr(ReflectedObjectPtr ptr) const;
 
 	/**
 	 * Finds if this object already exists. If so, returns a strong pointer to
@@ -485,7 +585,7 @@ protected:
 	 * @param ptr Pointer to find
 	 * @return Reference to the pointer or NULL
 	 */
-	ReflectedObjectPtr getStoredObject(void * ptr) const;
+	virtual	ReflectedObjectPtr getStoredObject(void * ptr) const;
 
 	/**
 	 * Determines if this pointer exists already.
@@ -493,7 +593,7 @@ protected:
 	 * @param ptr Pointer to find.
 	 * @return true if it exists.
 	 */
-	bool hasStoredObject(void * ptr) const;
+	virtual	bool hasStoredObject(void * ptr) const;
 
 public:
 
@@ -502,7 +602,15 @@ public:
 	 *
 	 * @param c Reflected class
 	 */
-	ReflectedClass(const cpgf::GMetaClass* c);
+	ReflectedClass(const cpgf::GMetaClass* c, bool isGlobal);
+
+	/**
+	 * Creates non-reflected class
+	 *
+	 * @param c Reflected class
+	 */
+	ReflectedClass(std::string name, bool isGlobal, VisibilityType vis,
+			int modifiers);
 
 	/**
 	 * Cleans up the wrapper class
@@ -510,7 +618,16 @@ public:
 	virtual ~ReflectedClass();
 
 
-	virtual bool isAccessible() const {return true;};
+	virtual bool isAccessible() const {return mClass != NULL;};
+
+	/**
+	 * TODO not currently supported
+	 * Determines if this class is a template.
+	 * @return true if a template
+	 */
+	virtual bool isTemplate() const {
+		return (mods & cpgf::metaModifierTemplate) != 0;
+	}
 
 	/**
 	 * Creates an object of this class with the specified parameters
@@ -530,7 +647,7 @@ public:
 	 * @return A pointer to the new object is successful. NULL if not.
 	 */
 #define REF_INVOKE(N, unused) \
-		const ReflectedObjectPtr create(std::string signature GPP_COMMA_IF(N) \
+		virtual	const ReflectedObjectPtr create(std::string signature GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) const;
 
 	GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
@@ -561,7 +678,7 @@ public:
 	 *
 	 * @return the Metadata class
 	 */
-	const cpgf::GMetaClass* getClass() const;
+	virtual	const cpgf::GMetaClass* getClass() const;
 
 	/**
 	 * Checks to see if a method exists using the method's signature.
@@ -574,11 +691,30 @@ public:
 	 *  @param methodSignature Signature of the method
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 *  @param inherited True if inherited items should be included.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *  @return true is that method exists
 	 */
 	virtual bool doesMethodExist(std::string methodSignature,
 			VisibilityAccessType vis = Public_Access,
-			bool inherit = false) const;
+			bool inherit = false, int modifiers = ALLOW_ALL_MODIFIERS,
+			bool allowMoreMods = true) const;
 
 
 	/**
@@ -603,14 +739,34 @@ public:
 	 * @return a list of method signatures
 	 */
 	virtual const std::vector<std::string> getMethodNames(
-			VisibilityAccessType vis = Public_Access, bool inherit = false) const;
+			VisibilityAccessType vis = Public_Access,
+			bool inherit = false) const;
 
 	/**
 	 * Gets a method that corresponds to the signature or NULL
 	 *
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedMethod * getMethod(std::string signature) const;
+	virtual const ReflectedMethod * getMethod(std::string signature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
@@ -618,11 +774,29 @@ public:
 	 *
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 *  @param inherited True if inherited items should be included.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
 	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return List of methods in the class
 	 */
 	virtual std::vector<const ReflectedMethod *> getMethods(
-			VisibilityAccessType vis = Public_Access, bool inherited = false);
+			VisibilityAccessType vis = Public_Access, bool inherited = false,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 	/**
 	 * Gets a list of the closest methods to the name provided
@@ -630,7 +804,7 @@ public:
 	 * @param name Name to find
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 *  @param inherited True if inherited items should be included.
-	 * @param count Maximum number to return (may be less or more if there
+	 *  @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *
 	 * @return List of methods that are close in name to the name given
@@ -662,11 +836,30 @@ public:
 	 * @param signature Signature of the value (i.e. int x or const double y)
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 *  @param inherited True if inherited items should be included.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *
 	 * @return true if the field exists
 	 */
 	virtual bool doesFieldExist(std::string signature, VisibilityAccessType vis = Public_Access,
-			bool inherit = false) const;
+			bool inherit = false, int modifiers = ALLOW_ALL_MODIFIERS,
+			bool allowMoreMods = true) const;
 
 	/**
 	 * Gets the number of variables declared
@@ -739,9 +932,29 @@ public:
 	 * returned is to a generic field.  When using get or set, an object
 	 * instance will need to be provided.
 	 *
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
+	 *
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedField * getField(std::string signature) const;
+	virtual const ReflectedField * getField(std::string signature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 
@@ -750,11 +963,30 @@ public:
 	 *
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 *  @param inherited True if inherited items should be included.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *
 	 * @return List of fields in the class
 	 */
 	virtual std::vector<const ReflectedField *> getFields(
-			VisibilityAccessType vis = Public_Access, bool inherited = false);
+			VisibilityAccessType vis = Public_Access, bool inherited = false,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 	/**
 	 * Gets a list of the closest fields to the name provided
@@ -798,10 +1030,29 @@ public:
 	 *
 	 *  @param signature Signature of the constructor
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *  @return true is that constructor exists
 	 */
 	virtual bool doesConstructorExist(std::string signature,
-			VisibilityAccessType vis = Public_Access) const;
+			VisibilityAccessType vis = Public_Access,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 	/**
 	 * Gets the number of constructor signatures that are being reflected for
@@ -829,20 +1080,57 @@ public:
 	 * Gets a constructor that corresponds to the signature or NULL.
 	 * Constructor signatures have the form: <class name>(<param>, <param>,...)
 	 *
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedConstructor * getConstructor(std::string signature) const;
+	virtual const ReflectedConstructor * getConstructor(std::string signature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
 	 * Gets a list of all constructor in the class
 	 *
-	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
 	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return List of constructor in the class
 	 */
 	virtual std::vector<const ReflectedConstructor *> getConstructors(
-			VisibilityAccessType vis = Public_Access);
+			VisibilityAccessType vis = Public_Access,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 	/**
 	 * Gets a list of the closest constructor to the name provided
@@ -931,19 +1219,36 @@ public:
 	/**
 	 * Checks to see if the class has a (public) base class by the name of name.
 	 *
-	 * TODO This cannot pick up non-reflected classes yet.
 	 *
 	 *  @param name Name of the base class
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *  @return true is name is the name of one of the base classes
 	 */
 	virtual bool hasBaseClass(std::string name,
-			VisibilityAccessType vis = Public_Access) const;
+			VisibilityAccessType vis = Public_Access,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 	/**
 	 * Gets the number of base classes for this class.
 	 *
-	 * TODO This cannot pick up non-reflected classes yet.
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 *
 	 * @return the number of base classes for this class
@@ -954,7 +1259,6 @@ public:
 	/**
 	 * Gets a list of all base classes for this class.
 	 *
-	 * TODO This cannot pick up non-reflected classes yet.
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 *
 	 * @return a list of base class names
@@ -965,25 +1269,184 @@ public:
 	/**
 	 * Gets a base class for this class.
 	 *
-	 * TODO This cannot pick up non-reflected classes yet.
 	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
 	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return a ReflectedClass object or NULL
 	 */
-	virtual const ReflectedBaseClass * getBaseClass(std::string name) const;
+	virtual const ReflectedBaseClass * getBaseClass(std::string name,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+
+
+	/**
+	 * Gets a list of the closest base class to the name provided
+	 *
+	 * @param name Name to find
+	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 * @param count Maximum number to return (may be less or more if there
+	 *  are values that are equally close to the name)
+	 *
+	 * @return List of base classes that are close in name to the name given
+	 */
+	virtual std::vector<const ReflectedBaseClass *> getClosestBaseClasses(
+			std::string name, VisibilityAccessType vis = Public_Access,
+			int count = MAX_SIMILAR);
+
+
+	/**
+	 * Gets a string comparing the name to the closest names found
+	 *
+	 * @param name Name to find
+	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 * @param count Maximum number to return (may be less or more if there
+	 *  are values that are equally close to the name)
+	 *
+	 * @return String with a list of base classes that are close in name
+	 * to the name given
+	 */
+	virtual std::string getClosestBaseClassesString(
+			std::string name, VisibilityAccessType vis = Public_Access,
+			int count = MAX_SIMILAR);
+
+	/**
+		 * Checks to see if the class has a (public) base class by the name of name.
+		 *
+		 *
+		 *  @param name Name of the inner class
+		 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+		 * @param modifiers set of modifiers (ORed together) that the item should
+		 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+		 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+		 * 	apply here:
+		 * 		metaModifierNone
+		 * 		metaModifierStatic
+		 * 		metaModifierVirtual
+		 * 		metaModifierPureVirtual
+		 * 		metaModifierTemplate
+		 * 		metaModifierConst
+		 * 		metaModifierVolatile
+		 * 		metaModifierInline
+		 * 		metaModifierExplicit
+		 * 		metaModifierExtern
+		 * 		metaModifierMutable
+		 *
+		 * @param allowMoreMods true if the field can have other modifiers aside
+		 * 	from those listed.  (defaults to true)
+		 *  @return true is name is the name of one of the inner classes
+		 */
+		virtual bool hasInnerClass(std::string name,
+				VisibilityAccessType vis = Public_Access,
+				int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+
+		/**
+		 * Gets the number of inner classes for this class.
+		 *
+		 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+		 *
+		 * @return the number of inner classes for this class
+		 */
+		virtual size_t getInnerClassCount(VisibilityAccessType vis = Public_Access) const;
+
+
+		/**
+		 * Gets a list of all inner classes for this class.
+		 *
+		 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+		 *
+		 * @return a list of inner class names
+		 */
+		virtual const std::vector<std::string> getInnerClassNames(
+				VisibilityAccessType vis = Public_Access) const;
+
+		/**
+		 * Gets a inner class for this class.
+		 *
+		 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+		 * @param modifiers set of modifiers (ORed together) that the item should
+		 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+		 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+		 * 	apply here:
+		 * 		metaModifierNone
+		 * 		metaModifierStatic
+		 * 		metaModifierVirtual
+		 * 		metaModifierPureVirtual
+		 * 		metaModifierTemplate
+		 * 		metaModifierConst
+		 * 		metaModifierVolatile
+		 * 		metaModifierInline
+		 * 		metaModifierExplicit
+		 * 		metaModifierExtern
+		 * 		metaModifierMutable
+		 *
+		 * @param allowMoreMods true if the field can have other modifiers aside
+		 * 	from those listed.  (defaults to true)
+		 * @return a ReflectedClass object or NULL
+		 */
+		virtual ReflectedClass * getInnerClass(std::string name,
+				int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+
+
+		/**
+		 * Gets a list of the closest inner class to the name provided
+		 *
+		 * @param name Name to find
+		 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+		 * @param count Maximum number to return (may be less or more if there
+		 *  are values that are equally close to the name)
+		 *
+		 * @return List of inner classes that are close in name to the name given
+		 */
+		virtual std::vector<ReflectedClass *> getClosestInnerClasses(
+				std::string name, VisibilityAccessType vis = Public_Access,
+				int count = MAX_SIMILAR);
+
+
+		/**
+		 * Gets a string comparing the name to the closest names found
+		 *
+		 * @param name Name to find
+		 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
+		 * @param count Maximum number to return (may be less or more if there
+		 *  are values that are equally close to the name)
+		 *
+		 * @return String with a list of inner classes that are close in name
+		 * to the name given
+		 */
+		virtual std::string getClosestInnerClassesString(
+				std::string name, VisibilityAccessType vis = Public_Access,
+				int count = MAX_SIMILAR);
 
 };
 
 
 
 template <typename ValueType>
-bool ReflectedObject::getField(ValueType& val, std::string signature)
+bool ReflectedObject::getField(ValueType& val, std::string signature,
+		int modifiers, bool allowMoreMods)
 {
 	bool success = false;
 
-	if (mClass->doesFieldExist(signature, All_Access, true))
+	if (mClass->doesFieldExist(signature, All_Access, true, modifiers,
+			allowMoreMods))
 	{
-		const ReflectedField* field = mClass->getField(signature);
+		const ReflectedField* field = mClass->getField(signature, modifiers,
+				allowMoreMods);
 		if (field->isAccessible()) {
 			val = (cpgf::fromVariant<ValueType>(field->getField()->get(
 					getObject())));
@@ -995,13 +1458,16 @@ bool ReflectedObject::getField(ValueType& val, std::string signature)
 }
 
 template <typename ValueType>
-bool ReflectedObject::setField(ValueType& val, std::string signature)
+bool ReflectedObject::setField(ValueType& val, std::string signature,
+		int modifiers, bool allowMoreMods)
 {
 	bool success = false;
 
-	if (mClass->doesFieldExist(signature, All_Access, true))
+	if (mClass->doesFieldExist(signature, All_Access, true, modifiers,
+			allowMoreMods))
 	{
-		const ReflectedField * field = mClass->getField(signature);
+		const ReflectedField * field = mClass->getField(signature, modifiers,
+				allowMoreMods);
 		try
 		{
 			if (field->isAccessible())

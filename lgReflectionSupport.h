@@ -527,11 +527,32 @@ public:
 	 * @param val value to store the variable in. This is likely a COPY of
 	 * 		the global variable.
 	 * @param signature Signature for the variable (i.e. int x, string n, etc.)
-	 * @param success True if the variable could be accessed. If false, the val
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
+	 *
+	 * @return True if the variable could be accessed. If false, the val
 	 * 	 	of val is unknown.
+	 *
 	 */
 	template <typename ValueType>
-	static bool getGlobalVariable(ValueType& val, std::string signature);
+	static bool getGlobalVariable(ValueType& val, std::string signature,
+			int modifiers = ReflectedData::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 
 	/**
@@ -539,10 +560,30 @@ public:
 	 *
 	 * @param val value to store in the global variable.
 	 * @param signature Signature for the variable (i.e. int x, string n, etc.)
-	 * @param success True if the variable could be set.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
+	 *
+	 * @return True if the variable could be set.
 	 */
 	template <typename ValueType>
-	static bool setGlobalVariable(const ValueType& val, std::string signature);
+	static bool setGlobalVariable(const ValueType& val, std::string signature,
+			int modifiers = ReflectedData::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 //	/**
 //		 * Sets a global variable with the specified signature.
@@ -638,14 +679,16 @@ bool LookingGlass::invokeWithReturn(std::string functionSignature, \
 
 
 template <typename ValueType>
-bool LookingGlass::getGlobalVariable(ValueType& val, std::string signature)
+bool LookingGlass::getGlobalVariable(ValueType& val, std::string signature,
+		int modifiers, bool allowMoreMods)
 {
 	ReflectedData* data = ReflectedData::getDataInstance();
 	bool success = false;
 
-	if (data->doesVariableExist(signature))
+	if (data->doesVariableExist(signature, modifiers, allowMoreMods))
 	{
-		const ReflectedField * field = data->getGlobalField(signature);
+		const ReflectedField * field = data->getGlobalField(signature,
+				modifiers, allowMoreMods);
 		if (field->isAccessible()) {
 			val = (cpgf::fromVariant<ValueType>(field->getField()->get(NULL)));
 			success = true;
@@ -656,14 +699,16 @@ bool LookingGlass::getGlobalVariable(ValueType& val, std::string signature)
 }
 
 template <typename ValueType>
-bool LookingGlass::setGlobalVariable(const ValueType& val, std::string signature)
+bool LookingGlass::setGlobalVariable(const ValueType& val, std::string signature,
+		int modifiers, bool allowMoreMods)
 {
 	ReflectedData* data = ReflectedData::getDataInstance();
 	bool success = false;
 
-	if (data->doesVariableExist(signature))
+	if (data->doesVariableExist(signature, modifiers, allowMoreMods))
 	{
-		const ReflectedField * field = data->getGlobalField(signature);
+		const ReflectedField * field = data->getGlobalField(signature,
+				modifiers, allowMoreMods);
 		try
 		{
 			if (field->isAccessible()) {

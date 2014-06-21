@@ -241,6 +241,26 @@ const string Tokenizer::FLOAT_MATCH_SEPARATE(createMatchString(NUM_PREFIX,
     FLOAT_MATCH_SEPARATE_BASE, NUM_POSTFIX));
 
 
+
+vector<string>& Tokenizer::tokenize(string data,
+            vector<string> &matches, string pattern)
+ {
+        boost::regex matcher;
+        matcher.assign(pattern, boost::regex_constants::icase);
+
+        boost::sregex_token_iterator i(data.begin(), data.end(), matcher, 1);
+        boost::sregex_token_iterator j;
+
+        while(i != j)
+        {
+            matches.push_back(*i);
+            i++;
+        }
+
+        return matches;
+ }
+
+
 string Tokenizer::createMatchString(string  pre, string  base, 
     string post)
 {

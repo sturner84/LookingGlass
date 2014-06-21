@@ -8,10 +8,10 @@
 #include "lgReflectedDataBase.h"
 #include "lgTestingSupport.h"
 
-
 namespace cpptesting {
 
-int ReflectedDataBase::MAX_SIMILAR = 5;
+const int ReflectedDataBase::MAX_SIMILAR = 5;
+const int ReflectedDataBase::ALLOW_ALL_MODIFIERS = -1;
 
 
 /**
@@ -29,38 +29,46 @@ bool ReflectedDataBase::isNonReflectedMethod(std::string methodName) {
 }
 
 
-void ReflectedDataBase::loadData(const cpgf::GMetaClass* gclass)
+void ReflectedDataBase::loadData(const cpgf::GMetaClass* gclass, bool isGlobal)
 {
 	std::string signature;
-
-	//TODO think about same method/variable names
-	//TODO fix class name -> move into functions
+//CPGF_TRACE("Adding Methods Base\r\n")
 	for (size_t k = 0; k < gclass->getMethodCount(); k++)
 	{
 		signature = ReflectionUtil::correctSignature(
 				ReflectionUtil::createFunctionSignature(gclass->getMethodAt(k)));
 //		methods[signature] = gclass->getMethodAt(k);
+//		CPGF_TRACE("Adding Methods Base " << signature << "\r\n")
 		if (isNonReflectedMethod(signature)) {
 			nonReflectedMethods[signature] = new ReflectedMethod(
-					gclass->getMethodAt(k), false);
+					gclass->getMethodAt(k), false, isGlobal);
+//			CPGF_TRACE("Adding Methods Base ns " << signature << "\r\n")
+			ReflectedNamespace::addItem(gclass->getMethodAt(k)->getNamespace(),
+					nonReflectedMethods[signature]);
 		}
 		else {
 			methods[signature] = new ReflectedMethod(gclass->getMethodAt(k),
-					false);
+					false, isGlobal);
+//			CPGF_TRACE("Adding Methods Base real ns " << signature << "\r\n")
+			ReflectedNamespace::addItem(gclass->getMethodAt(k)->getNamespace(),
+					methods[signature]);
 		}
 //
 //		std::cout << signature << " "<< ReflectionUtil::correctSignature(signature) << "\n";
 //		std::cout.flush();
 	}
-
+//CPGF_TRACE("Adding Fields\r\n")
 	for (size_t i = 0; i < gclass->getFieldCount(); i++)
 	{
-		signature = ReflectionUtil::createFieldSignature(
-				gclass->getFieldAt(i));
+		signature = ReflectionUtil::correctField(
+				ReflectionUtil::createFieldSignature(gclass->getFieldAt(i)));
+//		CPGF_TRACE("Adding " << gclass->getName() << " : " << signature << "\r\n")
 		//fields[signature] = gclass->getFieldAt(i);
-		fields[ReflectionUtil::correctField(signature)] =
-				new ReflectedField(gclass->getFieldAt(i), false);
-
+		fields[signature] =
+				new ReflectedField(gclass->getFieldAt(i), false, isGlobal);
+		ReflectedNamespace::addItem(gclass->getFieldAt(i)->getNamespace(),
+				fields[signature]);
+//		CPGF_TRACE("Added " << gclass->getName() << " : " << signature << "\r\n")
 //		std::cout << signature << " "<< ReflectionUtil::correctField(signature) << "\n";
 //		std::cout.flush();
 	}
@@ -83,13 +91,15 @@ void ReflectedDataBase::loadData(const cpgf::GMetaClass* gclass)
 //		std::cout << createConstructorSignature(gclass, gclass->getConstructorAt(i)) << "\n";
 //		std::cout.flush();
 //	}
-
+//CPGF_TRACE("Adding Enums\r\n")
 	for (size_t i = 0; i < gclass->getEnumCount(); i++)
 	{
 		signature = gclass->getEnumAt(i)->getName();
 //		enums[signature] = gclass->getEnumAt(i);
 		enums[ReflectionUtil::correctEnum(signature)]
-		            = new ReflectedEnum(gclass->getEnumAt(i), false);
+		            = new ReflectedEnum(gclass->getEnumAt(i), false, isGlobal);
+		ReflectedNamespace::addItem(gclass->getEnumAt(i)->getNamespace(),
+				enums[signature]);
 //
 //		std::cout << signature << " "<< ReflectionUtil::correctEnum(signature) << "\n";
 //		std::cout.flush();
@@ -103,7 +113,75 @@ void ReflectedDataBase::loadData(const cpgf::GMetaClass* gclass)
 //			//loadData(gclass->getClassAt(i));
 //		}
 //	}
+//CPGF_TRACE("Adding NR\r\n")
+	loadNonReflectedClassData(gclass);
+//CPGF_TRACE("Done loadData Base\r\n")
 }
+
+
+
+/**
+ * Loads data that is not reflected like private methods, non-reflected
+ * base classes, etc.
+ *
+ * @param gclass Class to load
+ */
+void ReflectedDataBase::loadNonReflectedClassData(const cpgf::GMetaClass* gclass) {
+	for (size_t i = 0; i < gclass->getNonReflectedCount(); i++) {
+		loadNonReflectedData(gclass->getNonReflectedAt(i));
+	}
+}
+
+
+/**
+ * Loads a single non-reflected item like private methods, non-reflected
+ * base classes, etc.
+ *
+ * @param nrItem item to load
+ */
+	void ReflectedDataBase::loadNonReflectedData(
+		const cpgf::GMetaNonReflectedItem * nrItem) {
+	std::string signature = nrItem->getSignature();
+	VisibilityType vis = ReflectedItem::cpgfToLGVisibility(
+				nrItem->getVisibility());
+
+	//			switch (nrItem->getVisibility()) {
+	//
+	//			}
+
+	switch (nrItem->getItemCategory()) {
+	case cpgf::mcatField:
+		signature = ReflectionUtil::correctField(signature);
+		fields[signature] =
+				new ReflectedField(signature, false, false, vis,
+	            		 nrItem->getModifiers());;
+		ReflectedNamespace::addItem(nrItem->getNamespace(),
+				fields[signature]);
+		break;
+	case cpgf::mcatMethod:
+		signature = ReflectionUtil::correctSignature(signature);
+		methods[signature] = new ReflectedMethod(signature, false, false, vis,
+       		 nrItem->getModifiers());
+		ReflectedNamespace::addItem(nrItem->getNamespace(),
+				methods[signature]);
+		break;
+	case cpgf::mcatEnum: {
+		//signature = ReflectionUtil::correctEnum(signature);
+		EnumInfo info = ReflectionUtil::divideEnumSignature(signature);
+		//std::string name = ReflectionUtil::getEnumName(signature);
+		enums[info.name]
+		      = new ReflectedEnum(signature, false, false, vis,
+	            		 nrItem->getModifiers());
+		ReflectedNamespace::addItem(nrItem->getNamespace(),
+				enums[info.name]);
+		break;
+	}
+	default:
+		CPGF_TRACE("Item category for non-reflected item is invalid: "
+				<< nrItem->getItemCategory())
+	}
+}
+
 
 ReflectedDataBase::~ReflectedDataBase()
 {
@@ -140,10 +218,11 @@ ReflectedDataBase::~ReflectedDataBase()
 }
 
 bool ReflectedDataBase::doesMethodExist(std::string functionSignature,
-		VisibilityAccessType vis, bool inherited) const
+		VisibilityAccessType vis, bool inherited, int modifiers,
+		bool allowMoreMods) const
 {
 	return exists(methods, ReflectionUtil::correctSignature(functionSignature),
-			vis, inherited);
+			vis, inherited, modifiers, allowMoreMods);
 
 //	const ReflectedMethod * m = getItem(methods,
 //			ReflectionUtil::correctSignature(functionSignature));
@@ -169,9 +248,11 @@ const std::vector<std::string> ReflectedDataBase::getMethodNames(
 }
 
 
-const ReflectedMethod * ReflectedDataBase::getMethod(std::string signature) const
+const ReflectedMethod * ReflectedDataBase::getMethod(std::string signature,
+		int modifiers, bool allowMoreMods) const
 {
-	return getItem(methods, ReflectionUtil::correctSignature(signature));
+	return getItem(methods, ReflectionUtil::correctSignature(signature),
+			modifiers, allowMoreMods);
 }
 
 
@@ -182,7 +263,7 @@ bool ReflectedDataBase::doesNonReflectedMethodExist(
 {
 	return exists(nonReflectedMethods,
 			ReflectionUtil::correctSignature(functionSignature),
-			vis, inherited);
+			vis, inherited, ALLOW_ALL_MODIFIERS, false);
 
 }
 
@@ -206,7 +287,7 @@ const ReflectedMethod * ReflectedDataBase::getNonReflectedMethod(
 		std::string signature) const
 {
 	return getItem(nonReflectedMethods,
-			ReflectionUtil::correctSignature(signature));
+			ReflectionUtil::correctSignature(signature), ALLOW_ALL_MODIFIERS, false);
 }
 
 
@@ -262,9 +343,11 @@ const ReflectedMethod * ReflectedDataBase::getNonReflectedMethod(
 
 //ignore values, just look for name
 bool ReflectedDataBase::doesEnumExist(std::string name,
-		VisibilityAccessType vis, bool inherited) const
+		VisibilityAccessType vis, bool inherited, int modifiers,
+		bool allowMoreMods) const
 {
-	return exists(enums, ReflectionUtil::correctEnum(name), vis, inherited);
+	return exists(enums, ReflectionUtil::correctEnum(name), vis, inherited,
+			modifiers, allowMoreMods);
 
 //	const ReflectedEnum * m = getItem(enums,
 //			ReflectionUtil::correctEnum(name));
@@ -288,7 +371,8 @@ const std::vector<std::string> ReflectedDataBase::getEnumNames(
 	return getNames(enums, vis, inherit);
 }
 
-const ReflectedEnum * ReflectedDataBase::getEnum(std::string signature) const
+const ReflectedEnum * ReflectedDataBase::getEnum(std::string signature,
+		int modifiers, bool allowMoreMods) const
 {
 //	std::string name = ReflectionUtil::correctEnum(signature);
 //	if (globalEnums.count(name) == 1)
@@ -296,15 +380,17 @@ const ReflectedEnum * ReflectedDataBase::getEnum(std::string signature) const
 //		return globalEnums[name];
 //	}
 //	return NULL;
-	return getItem(enums, ReflectionUtil::correctEnum(signature));
+	return getItem(enums, ReflectionUtil::correctEnum(signature),
+			modifiers, allowMoreMods);
 }
 
 
 
 std::vector<const ReflectedEnum *> ReflectedDataBase::getEnums(
-		VisibilityAccessType vis, bool inherited)
+		VisibilityAccessType vis, bool inherited, int modifiers,
+		bool allowMoreMods)
 {
-	return getItems(enums, vis, inherited);
+	return getItems(enums, vis, inherited, modifiers, allowMoreMods);
 }
 
 std::vector<const ReflectedEnum *> ReflectedDataBase::getClosestEnums(
@@ -321,9 +407,11 @@ std::string ReflectedDataBase::getClosestEnumsString(
 
 
 bool ReflectedDataBase::doesFieldExist(std::string name,
-		VisibilityAccessType vis, bool inherited) const
+		VisibilityAccessType vis, bool inherited, int modifiers,
+		bool allowMoreMods) const
 {
-	return exists(fields, ReflectionUtil::correctField(name), vis, inherited);
+	return exists(fields, ReflectionUtil::correctField(name), vis, inherited,
+			modifiers, allowMoreMods);
 
 //	const ReflectedField * m = getItem(fields,
 //				ReflectionUtil::correctField(name));
@@ -346,15 +434,18 @@ const std::vector<std::string> ReflectedDataBase::getVariableNames(
 			= fields.begin(); it != fields.end(); it++)
 	{
 		const ReflectedField * field = it->second;
-		const cpgf::GMetaType &type = field->getField()->getItemType();
+//		const cpgf::GMetaType &type = field->getField()->getItemType();
 
-		//TODO check these too?
+		// check these too?
 		//		bool isPointerToConst() const;
 		//		bool isPointerToConstVolatile() const;
 
-		if (!type.isConst() && !type.isConstVolatile()
-				&& !type.isReferenceToConst()
-				&& !type.isReferenceToConstVolatile()
+//		if (!type.isConst() && !type.isConstVolatile()
+//				&& !type.isReferenceToConst()
+//				&& !type.isReferenceToConstVolatile()
+//				&& (inherit || !field->isInherited())
+//				&& (vis & field->getVisibility()))
+		if (!field->isConst()
 				&& (inherit || !field->isInherited())
 				&& (vis & field->getVisibility()))
 		{
@@ -380,15 +471,18 @@ const std::vector<std::string> ReflectedDataBase::getConstantNames(
 			= fields.begin(); it != fields.end(); it++)
 	{
 		const ReflectedField * field = it->second;
-		const cpgf::GMetaType &type = field->getField()->getItemType();
+//		const cpgf::GMetaType &type = field->getField()->getItemType();
 
-		//TODO check these too?
+		//check these too?
 //		bool isPointerToConst() const;
 //		bool isPointerToConstVolatile() const;
 
-		if ((type.isConst() || type.isConstVolatile()
-				|| type.isReferenceToConst()
-				|| type.isReferenceToConstVolatile())
+//		if ((type.isConst() || type.isConstVolatile()
+//				|| type.isReferenceToConst()
+//				|| type.isReferenceToConstVolatile())
+//				&& (inherit || !field->isInherited())
+//				&& (vis & field->getVisibility()))
+		if (field->isConst()
 				&& (inherit || !field->isInherited())
 				&& (vis & field->getVisibility()))
 		{
@@ -417,7 +511,8 @@ const std::vector<std::string> ReflectedDataBase::getFieldNames(
 
 
 
-const ReflectedField * ReflectedDataBase::getField(std::string signature) const
+const ReflectedField * ReflectedDataBase::getField(std::string signature,
+		int modifiers, bool allowMoreMods) const
 {
 //	std::string name = ReflectionUtil::correctField(signature);
 //	if (fields.count(name) == 1)
@@ -426,7 +521,8 @@ const ReflectedField * ReflectedDataBase::getField(std::string signature) const
 //	}
 //	return NULL;
 
-	return getItem(fields, ReflectionUtil::correctField(signature));
+	return getItem(fields, ReflectionUtil::correctField(signature), modifiers,
+			allowMoreMods);
 }
 
 

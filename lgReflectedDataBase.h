@@ -10,6 +10,7 @@
 
 #include <cpgf/gmetaclass.h>
 #include <cpgf/gmetacommon.h>
+#include <cpgf/gmetanonreflected.h>
 #include <cpgf/gpp.h>
 #include <string>
 
@@ -62,7 +63,7 @@ protected:
 	 * @return true if it is one of the auto-generated support methods. See
 	 * isArraySetterSignature and isCopyFunctionSignature in ReflectionUtil
 	 */
-	bool isNonReflectedMethod(std::string methodName);
+	virtual	bool isNonReflectedMethod(std::string methodName);
 
 	/**
 	 * Loads data from the class (methods, fields, operators and enums).
@@ -70,7 +71,24 @@ protected:
 	 *
 	 * @param gclass Class to load
 	 */
-	void loadData(const cpgf::GMetaClass* gclass);
+	virtual	void loadData(const cpgf::GMetaClass* gclass, bool isGlobal);
+
+
+	/**
+	 * Loads data that is not reflected like private methods, non-reflected
+	 * base classes, etc.
+	 *
+	 * @param gclass Class to load
+	 */
+	virtual	void loadNonReflectedClassData(const cpgf::GMetaClass* gclass);
+
+	/**
+	 * Loads a single non-reflected item like private methods, non-reflected
+	 * base classes, etc.
+	 *
+	 * @param nrItem item to load
+	 */
+	virtual	void loadNonReflectedData(const cpgf::GMetaNonReflectedItem * nrItem);
 
 	/**
 	 * Destroys the data
@@ -86,7 +104,8 @@ protected:
 	 * @return The item (method, variable, etc.) or NULL if not found
 	 */
 	template <class T>
-	T getItem(const std::map<std::string, T> &dataMap, const std::string &name) const;
+	T getItem(const std::map<std::string, T> &dataMap,
+			const std::string &name, int modifiers, bool allowMoreMods) const;
 
 	/**
 	 * Gets a list of all of the names from one of the maps
@@ -130,7 +149,7 @@ protected:
 	template <class T>
 	std::vector<T> getItems(
 		const std::map<std::string, T> &vMap, VisibilityAccessType vis,
-		bool inherited) const;
+		bool inherited, int modifiers, bool allowMoreMods) const;
 
 	/**
 	 * Gets a list of the items matching the names in names
@@ -147,7 +166,7 @@ protected:
 	std::vector<T> getItems(
 			const std::map<std::string, T> &vMap,
 			const std::vector<std::string> &names, VisibilityAccessType vis,
-			bool inherited) const;
+			bool inherited, int modifiers, bool allowMoreMods) const;
 
 	/**
 	 * Gets a list of all of the items closest in name to the supplied name
@@ -195,7 +214,8 @@ protected:
 	 */
 	template <class T>
 	bool exists(const std::map<std::string, T> &vMap, std::string name,
-			VisibilityAccessType vis, bool inherited) const;
+			VisibilityAccessType vis, bool inherited, int modifiers,
+			bool allowMoreMods) const;
 
 	/**
 	 * Checks to see if a function exists using the function's signature.
@@ -206,13 +226,32 @@ protected:
 	 * 		takes an int and double as parameters
 	 *
 	 *  @param functionSignature Signature of the function
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
+	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 *  @param inherited Determines if inherited values are included (by default
 	 *  	this is false)
+	 *  @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *  @return true is that function exists
 	 */
 	virtual bool doesMethodExist(std::string functionSignature,
-			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+			VisibilityAccessType vis = Public_Access, bool inherited = false,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
@@ -242,7 +281,8 @@ protected:
 	 *
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedMethod * getMethod(std::string signature) const;
+	virtual const ReflectedMethod * getMethod(std::string signature,
+			int modifiers, bool allowMoreMods) const;
 
 
 	/**
@@ -300,12 +340,31 @@ protected:
 	 *
 	 * @param signature Signature of the value (i.e. int x or const double y)
 	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
+	 * @param inherited Determines if inherited values are included (by default
 	 *  	this is false)
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return true if the field exists
 	 */
 	virtual bool doesFieldExist(std::string signature, VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+			bool inherited = false, int modifiers = ALLOW_ALL_MODIFIERS,
+			bool allowMoreMods = true) const;
 
 	/**
 	 * Gets the number of variables declared with a global scope
@@ -383,15 +442,18 @@ protected:
 	 *
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedField * getField(std::string signature) const;
+	virtual const ReflectedField * getField(std::string signature,
+			int modifiers, bool allowMoreMods) const;
 
 
 public:
 
+	static const int ALLOW_ALL_MODIFIERS;
+
 	/**
 	 * Default number of similar items to return in the getClosestXXX methods
 	 */
-	static int MAX_SIMILAR;
+	static const int MAX_SIMILAR;
 
 
 //	/**
@@ -489,10 +551,29 @@ public:
 	 *  @param inherited Determines if inherited values are included (by default
 	 *  	this is false)
 	 *  @param name Name of the enum
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 *  @return true is that enum exists
 	 */
 	virtual bool doesEnumExist(std::string name, VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+			bool inherited = false, int modifiers = ALLOW_ALL_MODIFIERS,
+			bool allowMoreMods = true) const;
 
 	/**
 	 * Gets the number of enums that are being reflected
@@ -517,9 +598,30 @@ public:
 	/**
 	 * Gets an enum that corresponds to the name or NULL
 	 *
+	 * @param signature name of the enum
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
+	 *
 	 * @return an enum object or NULL
 	 */
-	virtual const ReflectedEnum * getEnum(std::string signature) const;
+	virtual const ReflectedEnum * getEnum(std::string signature,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
 	/**
@@ -527,11 +629,29 @@ public:
 	 *
 	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
 	 * @param inherited True if inherited enums should be included.
+	 * @param modifiers set of modifiers (ORed together) that the item should
+	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
+	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
+	 * 	apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
 	 *
+	 * @param allowMoreMods true if the field can have other modifiers aside
+	 * 	from those listed.  (defaults to true)
 	 * @return List of enums in the class
 	 */
 	virtual std::vector<const ReflectedEnum *> getEnums(
-			VisibilityAccessType vis = Public_Access, bool inherited = false);
+			VisibilityAccessType vis = Public_Access, bool inherited = false,
+			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 	/**
 	 * Gets a list of the closest enums to the name provided
@@ -566,15 +686,20 @@ public:
 
 };
 
-
+//TODO pass in method to get modifiers from name and then to format it
+//use the modifiers to add to the parameter
 template <class T>
 T ReflectedDataBase::getItem(const std::map<std::string, T> & dataMap,
-		const std::string & name) const
+		const std::string & name, int modifiers, bool allowMoreMods) const
 {
 	if (dataMap.count(name) == 1)
 	{
-		return dataMap.find(name)->second;
-		//return dataMap[name];
+		T item = dataMap.find(name)->second;
+		 //-1 = ignore modifiers
+		if (modifiers == ALLOW_ALL_MODIFIERS || modifiers == item->getModifiers()
+				|| (allowMoreMods && (modifiers & item->getModifiers()) != 0)) {
+			return item;
+		}
 	}
 
 	return NULL;
@@ -630,7 +755,7 @@ size_t ReflectedDataBase::countItems(
 template <class T>
 std::vector<T> ReflectedDataBase::getItems(
 	const std::map<std::string, T> &vMap, VisibilityAccessType vis,
-	bool inherited) const
+	bool inherited, int modifiers, bool allowMoreMods) const
 {
 	std::vector<T> items;
 
@@ -639,8 +764,10 @@ std::vector<T> ReflectedDataBase::getItems(
 	{
 		//get either the objects declared in the class or if
 		// inherited is true, everything
-		if ((vis & it->second->getVisibility()) &&
-						(inherited || it->second->isInherited() == false))
+		if ((vis & it->second->getVisibility())
+				&& (inherited || it->second->isInherited() == false)
+				&& (modifiers == ALLOW_ALL_MODIFIERS || modifiers == it->second->getModifiers()
+				|| (allowMoreMods && (modifiers & it->second->getModifiers()) != 0)))
 		{
 			items.push_back(it->second);
 		}
@@ -654,14 +781,14 @@ template <class T>
 std::vector<T> ReflectedDataBase::getItems(
 		const std::map<std::string, T> &vMap,
 		const std::vector<std::string> &names, VisibilityAccessType vis,
-		bool inherited) const
+		bool inherited, int modifiers, bool allowMoreMods) const
 {
 	std::vector<T> items;
 
 	for (std::vector<std::string>::const_iterator it = names.begin();
 			it != names.end(); it++)
 	{
-		T item = getItem(vMap, (*it));
+		T item = getItem(vMap, (*it), modifiers, allowMoreMods);
 		//get either the objects declared in the class or if
 		// inherited is true, everything
 		if (item && (vis & item->getVisibility()) &&
@@ -682,8 +809,8 @@ std::vector<T> ReflectedDataBase::getClosest(
 {
 	std::vector<std::string> names = StringDistance::getNClosest(name,
 			getNames(vMap, vis, inherited), count);
-
-	return getItems(vMap, names, vis, inherited);
+	//get the items by name ignoring any modifiers
+	return getItems(vMap, names, vis, inherited, ALLOW_ALL_MODIFIERS, false);
 }
 
 template <class T>
@@ -698,9 +825,10 @@ std::string ReflectedDataBase::getClosestString(
 
 template <class T>
 bool ReflectedDataBase::exists(const std::map<std::string, T> &vMap,
-		std::string name, VisibilityAccessType vis, bool inherited) const
+		std::string name, VisibilityAccessType vis, bool inherited,
+		int modifiers, bool allowMoreMods) const
 {
-	T m = getItem(vMap, name);
+	T m = getItem(vMap, name, modifiers, allowMoreMods);
 	return (m && (vis & m->getVisibility())
 			&& (inherited || !m->isInherited()));
 }

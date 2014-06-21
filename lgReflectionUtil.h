@@ -16,6 +16,58 @@
 namespace cpptesting {
 
 
+/**
+ * Describes a field/variable.
+ *
+ * This is intended to be used to pass information around and not for more
+ * permanent storage. For that, see ReflectedItem and its subclasses.
+ */
+struct FieldInfo {
+	std::string name;
+	std::string type;
+	int modifiers;
+};
+
+/**
+ * Describes a function/method/constructor
+ *
+ * This is intended to be used to pass information around and not for more
+ * permanent storage. For that, see ReflectedItem and its subclasses.
+ */
+struct FunctionInfo {
+	std::string name;
+	std::string returnType;
+	int modifiers;
+	std::vector<std::string> params;
+};
+
+
+/**
+ * Describes a class
+ *
+ * This is intended to be used to pass information around and not for more
+ * permanent storage. For that, see ReflectedItem and its subclasses.
+ */
+struct ClassInfo {
+	std::string name;
+	std::string enclosingClass;
+	int modifiers;
+};
+
+/**
+ * Describes an enum
+ *
+ * This is intended to be used to pass information around and not for more
+ * permanent storage. For that, see ReflectedItem and its subclasses.
+ */
+struct EnumInfo {
+	std::string name;
+//	int modifiers;
+	std::map<std::string, int> names;
+	std::map<int, std::string> values;
+};
+
+
 class ReflectionUtil
 {
 private:
@@ -39,7 +91,28 @@ private:
 			int closeParen);
 
 //	static int getNumberFromName(std::string name);
+	static void swapModifiers(std::vector<std::string> & values,
+			int & first, int & second);
 
+	//reorder volatile const mutable
+	static void reorderModifiers(std::vector<std::string> & values,
+			int & volatilePos, int & constPos, int & mutablePos);
+
+	/**
+	 * Tries to find the modifier in the signature and removes it if found.
+	 *
+	 * This won't work for const since const can be part of a parameter
+	 * declaration.
+	 *
+	 * This won't work for pure virtual since = 0 can be part of a (default)
+	 * parameter declaration.
+	 *
+	 * @param modifierToFind Modifier being searched for (static, virtual, etc.)
+	 * @param sig Signature to check
+	 *
+	 * @return true if the modifier was found and removed.
+	 */
+	static bool findModifier(std::string modifierToFind, std::string & sig);
 public:
 
 //	/**
@@ -195,6 +268,52 @@ public:
 //			const std::vector<std::string> & params);
 
 
+	/**
+	 * Determines, based on the signatures, the modifiers for this function/
+	 * method.
+	 *
+	 * Attempts to find the following modifiers
+	 * 	const
+	 * 	static
+	 * 	extern
+	 * 	volatile
+	 * 	mutable
+	 * 	[template] - not supported
+	 *
+	 *
+	 * @param sig Signature of the function/method
+	 * @return modifiers for this function
+	 */
+	static int getFieldModifiers(std::string sig);
+
+	/**
+	 * Determines, based on the signatures, the modifiers for this function/
+	 * method.
+	 *
+	 * sig is returned without those modifiers
+	 *
+	 * Attempts to find the following modifiers
+	 * 	const
+	 * 	static
+	 * 	extern
+	 * 	volatile
+	 * 	mutable
+	 * 	[template] - not supported
+	 *
+	 * @param sig Signature of the function/method
+	 * @return modifiers for this function
+	 */
+	static int getAndRemoveFieldModifiers(std::string & sig);
+
+	/**
+	 * Divides a field/variable into type, name
+	 *
+	 * @param sig Signature of the field/variable
+	 * @return type, name, and modifiers
+	 */
+	static FieldInfo divideFieldSignature(std::string sig);
+
+
 //TODO change [] to *?
 	/**
 	 * Utility method that corrects the formatting of fields so they are in
@@ -218,6 +337,16 @@ public:
 	 */
 	static std::string correctType(std::string type);
 
+
+	/**
+	 * Divides an enum into a name and a list of enums and their values
+	 *
+	 * @param sig Signature of the enum
+	 * @return name and a list of enums and their values
+	 */
+	static EnumInfo divideEnumSignature(std::string sig);
+
+
 	/**
 	 * Utility method that corrects the formatting of enums so they are in
 	 * a standard format and can be compared.
@@ -229,10 +358,46 @@ public:
 	 */
 	static std::string correctEnum(std::string enumStr);
 
+
+	/**
+	 * Determines, based on the signatures, the modifiers for this function/
+	 * method.
+	 *
+	 * @param sig Signature of the function/method
+	 * @return modifiers for this function
+	 */
+	static int getFunctionModifiers(std::string sig);
+
+	/**
+	 * Determines, based on the signatures, the modifiers for this function/
+	 * method.
+	 *
+	 * sig is returned without those modifiers
+	 *
+	 * @param sig Signature of the function/method
+	 * @return modifiers for this function
+	 */
+	static int getAndRemoveFunctionModifiers(std::string & sig);
+
+	/**
+	 * Divides a function/method into return type, name, parameters.
+	 *
+	 *
+	 * @param sig Signature of the function/method
+	 * @return A vector with the return type, name, and parameters.
+	 */
+	static FunctionInfo divideFunctionSignature(std::string sig);
+
 	/**
 	 * Utility method that corrects the formatting of
 	 * functions/methods/operators/constructors so they are in
 	 * a standard format and can be compared.
+	 *
+	 *	Unlike with the fields, the const modifier is included in the signature
+	 *	since
+	 *		int foo()
+	 *		int foo() const
+	 *	are both valid, separate declarations and can coexist.
 	 *
 	 * @param signature functions/methods/operators/constructors signature
 	 * @return Corrected signature
@@ -240,6 +405,56 @@ public:
 	 * TODO move to a more robust comparison scheme using clang
 	 */
 	static std::string correctSignature(std::string signature);
+
+
+	/**
+	 * Determines, based on the signatures, the modifiers for this class.
+	 *
+	 * Attempts to find the following modifiers
+	 * 	virutal (for base classes)
+	 * 	[template] - not supported
+	 *
+	 *
+	 * @param sig Signature of the class
+	 * @return modifiers for this class
+	 */
+	static int getClassModifiers(std::string sig);
+
+	/**
+	 * Determines, based on the signatures, the modifiers for this function/
+	 * method.
+	 *
+	 * sig is returned without those modifiers
+	 *
+	 * Attempts to find the following modifiers
+	 * 	virutal (for base classes)
+	 * 	[template] - not supported
+	 *
+	 * @param sig Signature of the class
+	 * @return modifiers for this class
+	 */
+	static int getAndRemoveClassModifiers(std::string & sig);
+
+	/**
+	 * Divides a class into name, enclosing class, and modifiers.
+	 *
+	 *
+	 * @param sig Signature of the class
+	 * @return Info on the class
+	 */
+	static ClassInfo divideClassSignature(std::string sig);
+
+	/**
+	 * Utility method that corrects the formatting of
+	 * (inner) classes so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param signature class signature
+	 * @return Corrected signature
+	 *
+	 * TODO move to a more robust comparison scheme using clang
+	 */
+	static std::string correctClassSignature(std::string signature);
 
 
 
@@ -351,6 +566,30 @@ public:
 	 */
 	static std::string createCopyFunctionSignature(std::string className);
 
+
+	/**
+	 * Determines if the name of this method refers to a destructor
+	 *
+	 * @param name Name of the method
+	 * @return true if it is a destructor
+	 */
+	static bool isDestructor(std::string name);
+
+//	/**
+//	 * Gets the name from a non-reflected enumeration which has the form
+//	 *  <name> {<enum> [= <value>], ...}
+//	 * @param signature Signature of the enum
+//	 * @return name of the enum
+//	 */
+//	static std::string getEnumName(std::string signature);
+//
+//	/**
+//	 * Gets the values from a non-reflected enumeration which has the form
+//	 *  <name> {<enum> [= <value>], ...}
+//	 * @param signature Signature of the enum
+//	 * @return map with the name of the value and the value
+//	 */
+//	static std::map<std::string, int> getEnumValues(std::string signature);
 
 };
 

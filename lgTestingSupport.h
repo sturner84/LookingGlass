@@ -303,7 +303,7 @@ class Tokenizer
         static const string NUM_POSTFIX;
         
         /**
-         * @brief Tokenizes the string are stores it in a vector
+         * @brief Tokenizes the string and stores it in a vector
          * 
          * This method tokenizes the string and tries to convert the data
          * into the appropriate type. If successful, it is stored in the vector.
@@ -329,6 +329,31 @@ class Tokenizer
         template <class T> static vector<T>& tokenize(string data, 
             vector<T> &matches, string pattern = MATCH);
         
+
+        /**
+         * @brief Tokenizes the string and stores it in a vector
+         *
+         * Specialization for strings
+         *
+         *
+         * @attention The tokenizer pulls out the 1st captured group from the
+         * regular expression.  If more than one group is used, make sure that
+         * they are marked as uncaptured (i.e. ?:)
+         *
+         * @param data String to tokenize
+         * @param matches Vector to store the data
+         * @param pattern Pattern used to tokenize the data. This should match
+         *  the intended tokens and not describe where the string is split.
+         *  (i.e. \s would return a vector of whitespace and not the values
+         *  delimited by the whitespace).
+         *  The default value is to tokenize it into strings
+         *
+         * @return A vector with the tokens.  This is a reference to matches.
+         *
+         */
+         static vector<string>& tokenize(string data,
+                    vector<string> &matches, string pattern);
+
         /**
          * @brief Creates a regular expression using the prefix, postfix, and 
          * the base.
@@ -490,6 +515,11 @@ class Tokenizer
         
         return matches;
  }
+
+
+
+
+
 
 
 
