@@ -124,7 +124,7 @@ public:
 	 * @param sig Signature of the class
 	 * @param vis Visibility of the class
 	 */
-	ReflectedBaseClass(std::string sig, VisibilityType vis, int modifiers);
+	ReflectedBaseClass(ClassSignature sig, VisibilityType vis, int modifiers);
 
 	/**
 	 * Gets a reference to the base class if it is being reflected.  Otherwise
@@ -213,7 +213,7 @@ protected:
 	 * @param signature Signature of the function/method
 	 * @return Reflected class or NULL
 	 */
-	virtual	const ReflectedClass * getReturnTypeFromSignature(std::string signature);
+	virtual	const ReflectedClass * getReturnTypeFromSignature(MethodSignature signature);
 
 	/**
 	 * Determines if the return value should be copied (i.e. it isn't a
@@ -222,7 +222,7 @@ protected:
 	 * @param signature Signature of the function/method
 	 * @return true if it should be copied
 	 */
-	virtual	bool shouldCopyReturnValue(std::string signature);
+	virtual	bool shouldCopyReturnValue(MethodSignature signature);
 
 	/**
 	 * Creates a copy of the Return Value
@@ -281,7 +281,7 @@ public:
 	 * 		to the ReturnType, then this is false.
 	 */
 #define REF_INVOKE(N, unused) \
-	virtual	bool invoke(std::string methodSignature \
+	virtual	bool invoke(MethodSignature methodSignature \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
@@ -309,7 +309,7 @@ public:
 	 */
 #define REF_INVOKE(N, unused) \
 		template <typename ReturnType> \
-	bool invokeReturn(std::string methodSignature, \
+	bool invokeReturn(MethodSignature methodSignature, \
 				ReturnType & returnVal GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
@@ -339,7 +339,7 @@ public:
 	 * 		to the ReturnType, then this is false.
 	 */
 #define REF_INVOKE(N, unused) \
-	virtual	bool invokeReturn(std::string methodSignature, \
+	virtual	bool invokeReturn(MethodSignature methodSignature, \
 				ReflectedObjectPtr & returnVal \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
@@ -397,7 +397,7 @@ public:
 	 * 	 	of val is unknown.
 	 */
 	template <typename ValueType>
-	bool getField(ValueType& val, std::string signature,
+	bool getField(ValueType& val, FieldSignature signature,
 			int modifiers = ReflectedDataBase::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 
@@ -427,7 +427,7 @@ public:
 	 * @return True if the variable could be set.
 	 */
 	template <typename ValueType>
-	bool setField(ValueType& val, std::string signature,
+	bool setField(ValueType& val, FieldSignature signature,
 			int modifiers = ReflectedDataBase::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 	/**
@@ -609,7 +609,7 @@ public:
 	 *
 	 * @param c Reflected class
 	 */
-	ReflectedClass(std::string name, bool isGlobal, VisibilityType vis,
+	ReflectedClass(ClassSignature name, bool isGlobal, VisibilityType vis,
 			int modifiers);
 
 	/**
@@ -647,7 +647,7 @@ public:
 	 * @return A pointer to the new object is successful. NULL if not.
 	 */
 #define REF_INVOKE(N, unused) \
-		virtual	const ReflectedObjectPtr create(std::string signature GPP_COMMA_IF(N) \
+		virtual	const ReflectedObjectPtr create(MethodSignature signature GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) const;
 
 	GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
@@ -711,7 +711,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 *  @return true is that method exists
 	 */
-	virtual bool doesMethodExist(std::string methodSignature,
+	virtual bool doesMethodExist(MethodSignature methodSignature,
 			VisibilityAccessType vis = Public_Access,
 			bool inherit = false, int modifiers = ALLOW_ALL_MODIFIERS,
 			bool allowMoreMods = true) const;
@@ -765,7 +765,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedMethod * getMethod(std::string signature,
+	virtual const ReflectedMethod * getMethod(MethodSignature signature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -810,7 +810,7 @@ public:
 	 * @return List of methods that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedMethod *> getClosestMethods(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			MethodSignature name, VisibilityAccessType vis = Public_Access,
 			bool inherited = false, int count = MAX_SIMILAR);
 
 
@@ -827,7 +827,7 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestMethodsString(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			MethodSignature name, VisibilityAccessType vis = Public_Access,
 			bool inherited = false, int count = MAX_SIMILAR);
 
 	/**
@@ -857,7 +857,7 @@ public:
 	 *
 	 * @return true if the field exists
 	 */
-	virtual bool doesFieldExist(std::string signature, VisibilityAccessType vis = Public_Access,
+	virtual bool doesFieldExist(FieldSignature signature, VisibilityAccessType vis = Public_Access,
 			bool inherit = false, int modifiers = ALLOW_ALL_MODIFIERS,
 			bool allowMoreMods = true) const;
 
@@ -953,7 +953,7 @@ public:
 	 *
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedField * getField(std::string signature,
+	virtual const ReflectedField * getField(FieldSignature signature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -1000,7 +1000,7 @@ public:
 	 * @return List of fields that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedField *> getClosestFields(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			FieldSignature name, VisibilityAccessType vis = Public_Access,
 			bool inherited = false, int count = MAX_SIMILAR);
 
 
@@ -1017,7 +1017,7 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestFieldsString(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			FieldSignature name, VisibilityAccessType vis = Public_Access,
 			bool inherited = false, int count = MAX_SIMILAR);
 
 	/**
@@ -1050,7 +1050,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 *  @return true is that constructor exists
 	 */
-	virtual bool doesConstructorExist(std::string signature,
+	virtual bool doesConstructorExist(MethodSignature signature,
 			VisibilityAccessType vis = Public_Access,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
@@ -1100,7 +1100,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedConstructor * getConstructor(std::string signature,
+	virtual const ReflectedConstructor * getConstructor(MethodSignature signature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -1143,7 +1143,7 @@ public:
 	 * @return List of constructor that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedConstructor *> getClosestConstructors(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			MethodSignature name, VisibilityAccessType vis = Public_Access,
 			int count = MAX_SIMILAR);
 
 
@@ -1159,7 +1159,7 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestConstructorsString(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			MethodSignature name, VisibilityAccessType vis = Public_Access,
 			int count = MAX_SIMILAR);
 
 	//	/**
@@ -1242,7 +1242,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 *  @return true is name is the name of one of the base classes
 	 */
-	virtual bool hasBaseClass(std::string name,
+	virtual bool hasBaseClass(ClassSignature name,
 			VisibilityAccessType vis = Public_Access,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
@@ -1290,7 +1290,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 * @return a ReflectedClass object or NULL
 	 */
-	virtual const ReflectedBaseClass * getBaseClass(std::string name,
+	virtual const ReflectedBaseClass * getBaseClass(ClassSignature name,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -1305,7 +1305,7 @@ public:
 	 * @return List of base classes that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedBaseClass *> getClosestBaseClasses(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			ClassSignature name, VisibilityAccessType vis = Public_Access,
 			int count = MAX_SIMILAR);
 
 
@@ -1321,7 +1321,7 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestBaseClassesString(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			ClassSignature name, VisibilityAccessType vis = Public_Access,
 			int count = MAX_SIMILAR);
 
 	/**
@@ -1350,7 +1350,7 @@ public:
 		 * 	from those listed.  (defaults to true)
 		 *  @return true is name is the name of one of the inner classes
 		 */
-		virtual bool hasInnerClass(std::string name,
+		virtual bool hasInnerClass(ClassSignature name,
 				VisibilityAccessType vis = Public_Access,
 				int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
@@ -1398,7 +1398,7 @@ public:
 		 * 	from those listed.  (defaults to true)
 		 * @return a ReflectedClass object or NULL
 		 */
-		virtual ReflectedClass * getInnerClass(std::string name,
+		virtual ReflectedClass * getInnerClass(ClassSignature name,
 				int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -1413,7 +1413,7 @@ public:
 		 * @return List of inner classes that are close in name to the name given
 		 */
 		virtual std::vector<ReflectedClass *> getClosestInnerClasses(
-				std::string name, VisibilityAccessType vis = Public_Access,
+				ClassSignature name, VisibilityAccessType vis = Public_Access,
 				int count = MAX_SIMILAR);
 
 
@@ -1429,7 +1429,7 @@ public:
 		 * to the name given
 		 */
 		virtual std::string getClosestInnerClassesString(
-				std::string name, VisibilityAccessType vis = Public_Access,
+				ClassSignature name, VisibilityAccessType vis = Public_Access,
 				int count = MAX_SIMILAR);
 
 };
@@ -1437,7 +1437,7 @@ public:
 
 
 template <typename ValueType>
-bool ReflectedObject::getField(ValueType& val, std::string signature,
+bool ReflectedObject::getField(ValueType& val, FieldSignature signature,
 		int modifiers, bool allowMoreMods)
 {
 	bool success = false;
@@ -1458,7 +1458,7 @@ bool ReflectedObject::getField(ValueType& val, std::string signature,
 }
 
 template <typename ValueType>
-bool ReflectedObject::setField(ValueType& val, std::string signature,
+bool ReflectedObject::setField(ValueType& val, FieldSignature signature,
 		int modifiers, bool allowMoreMods)
 {
 	bool success = false;

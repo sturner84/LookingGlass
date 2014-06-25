@@ -71,12 +71,12 @@ const std::string CLEAN_FIELD_TYPE_REPLACE = "(?1)(?2)";
 //const std::string CLEAN_FIELD_TYPE_REPLACE = "(?1)(?2)(?3)";
 
 
-ReflectionUtil ReflectionUtil::instance;
-
-ReflectionUtil::ReflectionUtil()
-{
-//	loadOperatorNames();
-}
+//ReflectionUtil ReflectionUtil::instance;
+//
+//ReflectionUtil::ReflectionUtil()
+//{
+////	loadOperatorNames();
+//}
 
 
 //void ReflectionUtil::loadOperatorNames()
@@ -296,334 +296,40 @@ ReflectionUtil::ReflectionUtil()
 
 
 /**
- * Determines, based on the signatures, the modifiers for this function/
- * method.
+ * Tries to find the modifier in the signature and removes it if found.
  *
- * Attempts to find the following modifiers
- * 	virtual
- * 	pure virtual
- * 	const
- * 	static
- * 	inline
- * 	extern
- * 	[template] - not supported
+ * This won't work for const since const can be part of a parameter
+ * declaration.
  *
+ * This won't work for pure virtual since = 0 can be part of a (default)
+ * parameter declaration.
  *
- * @param sig Signature of the function/method
- * @return modifiers for this function
+ * @param modifierToFind Modifier being searched for (static, virtual, etc.)
+ * @param sig Signature to check
+ *
+ * @return true if the modifier was found and removed.
  */
-//TODO test me
-int ReflectionUtil::getFieldModifiers(std::string sig) {
-	return getAndRemoveFieldModifiers(sig);
-}
-
-/**
- * Determines, based on the signatures, the modifiers for this function/
- * method.
- *
- * sig is returned without those modifiers
- *
- * Attempts to find the following modifiers
- * 	virtual
- * 	pure virtual
- * 	const
- * 	static
- * 	inline
- * 	extern
- * 	[template] - not supported
- *
- * @param sig Signature of the function/method
- * @return modifiers for this function
- */
-int ReflectionUtil::getAndRemoveFieldModifiers(std::string & sig) {
-
+bool Signature::findModifier(std::string modifierToFind, std::string & sig) const {
+	std::string newSig = sig;
+	std::string regex = "(?:^|\\s+)" + modifierToFind + "(?:\\s+|$)";
 	boost::regex matcher;
-	matcher.assign(TYPE_CLEAN_REGEX_NO_ARRAY);
-	sig = StringUtil::trim(boost::regex_replace(sig, matcher,
-				TYPE_CLEAN_REPLACE_NO_ARRAY,
-				boost::match_default | boost::format_all));
 
-	int modifiers = cpgf::metaModifierNone;
-	//static, extern, volatile, mutable
-	if (findModifier("mutable", sig)) {
-		modifiers |= cpgf::metaModifierMutable;
-	}
-	if (findModifier("static", sig)) {
-		modifiers |= cpgf::metaModifierStatic;
-	}
-	if (findModifier("volatile", sig)) {
-		modifiers |= cpgf::metaModifierVolatile;
-	}
-	if (findModifier("extern", sig)) {
-		modifiers |= cpgf::metaModifierExtern;
+
+	matcher.assign(regex);
+	newSig = StringUtil::trim(boost::regex_replace(newSig, matcher,
+			" ", boost::match_default | boost::format_all));
+
+	if (sig != newSig) {
+		sig = newSig;
+		return true;
 	}
 
-	//const
-	std::string name = "";
-	size_t arrayPos = sig.find("[");
-	size_t namePos = sig.rfind(" ", arrayPos);
-	if (namePos != string::npos) {
-		name = StringUtil::trim(sig.substr(namePos, string::npos));
-		sig = StringUtil::trim(sig.substr(0, namePos));
-
-	}
-
-	matcher.assign("(?:\\s|^|\\*)(const)(?:\\s|&|$)(?:[^*]*$)");
-	if (boost::regex_search(sig, matcher)) {
-		modifiers |= cpgf::metaModifierConst;
-		sig = StringUtil::trim(boost::regex_replace(sig, matcher, "(?1)",
-						boost::match_default | boost::format_all));
-	}
-
-	//TODO template - not handled yet
-
-
-	if (name != "") {
-		sig = sig + " " + name;
-	}
-
-	return modifiers;
+	return false;
 }
 
 
-/**
- * Divides a function/method into return type, name, parameters.
- *
- * The vector returned from the method has the return type in position 0,
- * the name in position 1, anything after the parameters (like const) is in
- * position 2 and any parameters follow.
- *
- * @param sig Signature of the function/method
- * @return A vector with the return type, name, and parameters.
- */
-FieldInfo ReflectionUtil::divideFieldSignature(std::string sig) {
-	FieldInfo info;
-
-	boost::regex matcher;
-	std::string newField;
-
-	newField = sig;
-
-	matcher.assign(TYPE_CLEAN_REGEX_NO_ARRAY);
-	newField = StringUtil::trim(boost::regex_replace(newField, matcher,
-			TYPE_CLEAN_REPLACE_NO_ARRAY,
-			boost::match_default | boost::format_all));
-
-	//assumes it has a name
-	size_t pos = newField.rfind(" ");
-
-	if (pos != string::npos)
-	{
-		info.type = newField.substr((string::size_type) 0,
-				(string::size_type) pos);
-		info.name = newField.substr((string::size_type) pos,
-				(string::size_type) string::npos);
-
-		matcher.assign(ARRAY_MATCH_REGEX);
-		boost::match_results<std::string::iterator> match;
-//		std::string::const_iterator start = ;
-//		std::string::const_iterator end = ;
-
-		while (boost::regex_search(info.name.begin(), info.name.end(), match, matcher))
-		{
-			info.type += std::string(match[0].first, match[0].second);
-			info.name = std::string(info.name.begin(), match[0].first) +
-					std::string(match[0].second, info.name.end());
-		}
-
-		info.type = correctType(info.type);
-	}
-
-	//this expects a name, so add a fake one and remove it afterwards
-	info.type += " x";
-	info.modifiers = getAndRemoveFieldModifiers(info.type);
-	info.type = info.type.substr(0, info.type.length() - 2);
-
-	//clean out any extra spaces in there
-	matcher.assign(CLEAN_SPACES);
-	info.name = StringUtil::trim(boost::regex_replace(info.name, matcher,
-			CLEAN_SPACES_REPLACE, boost::match_default | boost::format_all));
-	info.type = StringUtil::trim(boost::regex_replace(info.type, matcher,
-			CLEAN_SPACES_REPLACE, boost::match_default | boost::format_all));
-
-	return info;
-}
-
-
-std::string ReflectionUtil::createFieldSignature(const cpgf::GMetaField *field)
-{
-	return getType(field->getItemType()) +
-			" " /*+ mClass->getName() + "::"*/ + field->getName();
-}
-
-
-std::string ReflectionUtil::createFunctionSignature(const cpgf::GMetaMethod *method)
-{
-	std::string sig;
-
-	if (method->hasResult())
-	{
-		sig += getType(method->getResultType()) + " ";
-	}
-	else
-	{
-//		CPGF_TRACE(method->getName() << " " << !isDestructor(method->getName()) << "\r\n")
-		if (!isDestructor(method->getName())) {
-			sig = "void ";
-		}
-	}
-
-
-//	if (mClass->getName() != "")
-//	{
-//		sig += mClass->getQualifiedName() + "::";
-//	}
-
-//	std::string opName = ReflectionUtil::getOperatorSymbol(method->getName());
-
-//	if (opName == "")
-//	{
-		sig += method->getName() + "(";
-//	}
-//	else
-//	{
-//		sig += opName + "(";
-//	}
-
-	std::string pType;
-
-	for (size_t i = 0; i < method->getParamCount(); i++)
-	{
-		pType = getType(method->getParamType(i));
-		if (pType != "") {
-			if (i != 0) {
-				sig += ", ";
-			}
-			sig += pType;
-
-			if (i == method->getParamCount() - 1 && method->isVariadic()) {
-				sig += "...";
-			}
-		}
-	}
-
-	sig += ")";
-
-//	if (method->getItemType().isConstFunction() ||
-//			method->getItemType().isConstVolatileFunction())
-	if ((method->getModifiers() & cpgf::metaModifierConst) != 0)
-	{
-		sig += " const";
-	}
-
-	return sig;
-}
-
-std::string ReflectionUtil::createConstructorSignature(const cpgf::GMetaClass *mClass, const cpgf::GMetaConstructor *construct)
-{
-	std::string sig;
-
-	sig += mClass->getName() + "(";
-
-	for (size_t i = 0; i < construct->getParamCount(); i++)
-	{
-		sig += getType(construct->getParamType(i));
-		if (i != construct->getParamCount() - 1)
-		{
-			sig += ", ";
-		}
-		else
-		{
-			if (construct->isVariadic())
-			{
-				sig += "...";
-			}
-		}
-	}
-
-	sig += ")";
-
-	return sig;
-}
-
-
-//int ReflectionUtil::getNumberFromName(std::string name) {
-//	stringstream sString;
-//	int value = -1;
-//
-//	sString << name;
-//	sString >> value;
-//
-//	return value;
-//}
-
-
-//std::string ReflectionUtil::createOperatorSignature(const cpgf::GMetaOperator *op)
-//{
-//	std::string sig;
-//
-//	if (op->hasResult())
-//	{
-//		sig += getType(op->getResultType());
-//		sig += " ";
-//	}
-//	else
-//	{
-//		sig = "void ";
-//	}
-////	if (mClass->getName() != "")
-////	{
-////		sig += mClass->getName() + "::";
-////	}
-//	int opNumber = getNumberFromName(op->getName());
-//	sig += getOperatorSymbol(opNumber) + "(";
-//
-//	for (size_t i = 0; i < op->getParamCount(); i++)
-//	{
-//		sig += getType(op->getParamType(i));
-//		if (i != op->getParamCount() - 1)
-//		{
-//			sig += ", ";
-//		}
-//	}
-//
-//	sig += ")";
-//
-////	if (op->getItemType().isConst())
-////	{
-////		sig += " const";
-////	}
-//	if (op->getItemType().isConst() ||
-//			op->getItemType().isConstFunction() ||
-//			op->getItemType().isConstVolatileFunction())
-//	{
-//		sig += " const";
-//	}
-//
-//	return sig;
-//}
-
-std::string ReflectionUtil::getType(const cpgf::GMetaType &type)
-{
-	if (type.getBaseName()) {
-		return type.getBaseName();
-	}
-
-//	if(! type.getBaseType().isEmpty()) {
-//			const cpgf::GMetaTypedItem * item = cpgf::getGlobalMetaClass()->getModule()->findItemByType(type.getBaseType());
-//			if(item != NULL) {
-//				return item->getQualifiedName().c_str();
-//			}
-//		}
-
-	return type.getBaseType().getStdTypeInfo().name();
-}
-
-
-
-
-std::string ReflectionUtil::buildStr(std::vector<std::string> v,
-			std::string delim)
+std::string Signature::buildStr(std::vector<std::string> v,
+		std::string delim) const
 {
 	std::string resultStr;
 	for (size_t i = 0; i < v.size(); i++)
@@ -638,14 +344,15 @@ std::string ReflectionUtil::buildStr(std::vector<std::string> v,
 	return resultStr;
 }
 
-std::vector<std::string> & ReflectionUtil::correctModifiers(
+
+std::vector<std::string> & Signature::correctModifiers(
 		std::vector<std::string> &v)
 {
 
 	//fix up modifiers
 	int cPos = -1;
 	int vPos = -1;
-//	int mPos = -1;
+	int mPos = -1;
 	for (size_t i = 0; i < v.size(); )
 	{
 		if (v[i] == "*" || v[i] == "&")
@@ -680,39 +387,39 @@ std::vector<std::string> & ReflectionUtil::correctModifiers(
 						v.erase(v.begin() + i);
 					}
 				}
-//				else {
-//					if (v[i] == "mutable")
-//					{
-//						if (mPos == -1)
-//						{
-//							mPos = i;
-//							i++;
-//						}
-//						else { //if it already exists, delete it
-//							v.erase(v.begin() + i);
-//						}
-//					}
-//				}
+				else {
+					if (v[i] == "mutable")
+					{
+						if (mPos == -1)
+						{
+							mPos = i;
+							i++;
+						}
+						else { //if it already exists, delete it
+							v.erase(v.begin() + i);
+						}
+					}
+				}
 			}
 		}
-		//if out of order, swap strings and positions
-		if (cPos != -1 && vPos != -1 && cPos > vPos) {
-			std::string swap = v[cPos];
-			v[cPos] = v[vPos];
-			v[vPos] = swap;
-
-			int swapPos = cPos;
-			cPos = vPos;
-			vPos = swapPos;
-		}
-//		reorderModifiers(v, vPos, cPos, mPos);
+		//		//if out of order, swap strings and positions
+		//		if (cPos != -1 && vPos != -1 && cPos > vPos) {
+		//			std::string swap = v[cPos];
+		//			v[cPos] = v[vPos];
+		//			v[vPos] = swap;
+		//
+		//			int swapPos = cPos;
+		//			cPos = vPos;
+		//			vPos = swapPos;
+		//		}
+		reorderModifiers(v, vPos, cPos, mPos);
 	}
 
 	return v;
 }
 
 
-void ReflectionUtil::swapModifiers(std::vector<std::string> & values,
+void Signature::swapModifiers(std::vector<std::string> & values,
 		int & first, int & second) {
 	if (first != -1 && second != -1 && first < second) {
 		std::string swap = values[first];
@@ -726,108 +433,38 @@ void ReflectionUtil::swapModifiers(std::vector<std::string> & values,
 }
 
 //reorder volatile const mutable
-void ReflectionUtil::reorderModifiers(std::vector<std::string> & values,
+void Signature::reorderModifiers(std::vector<std::string> & values,
 		int & volatilePos, int & constPos, int & mutablePos) {
 
 	//out of order
+//	CPGF_TRACE("before swap: V" << volatilePos << " "
+//			<< (volatilePos != -1 ? values[volatilePos] : "n/a")
+//			<< " C" << constPos << " "
+//			<< (constPos != -1 ? values[constPos] : "n/a")
+//			<< " M" << mutablePos << " "
+//			<< (mutablePos != -1 ? values[mutablePos] : "n/a")
+//			<< "\r\n")
 	swapModifiers(values, volatilePos, constPos);
 	swapModifiers(values, volatilePos, mutablePos);
 	swapModifiers(values, constPos, mutablePos);
+//	CPGF_TRACE("before swap: V" << volatilePos << " "
+//				<< (volatilePos != -1 ? values[volatilePos] : "n/a")
+//				<< " C" << constPos << " "
+//				<< (constPos != -1 ? values[constPos] : "n/a")
+//				<< " M" << mutablePos << " "
+//				<< (mutablePos != -1 ? values[mutablePos] : "n/a")
+//				<< "\r\n")
+
 }
+
 
 
 /**
- * Tries to find the modifier in the signature and removes it if found.
- *
- * This won't work for const since const can be part of a parameter
- * declaration.
- *
- * This won't work for pure virtual since = 0 can be part of a (default)
- * parameter declaration.
- *
- * @param modifierToFind Modifier being searched for (static, virtual, etc.)
- * @param sig Signature to check
- *
- * @return true if the modifier was found and removed.
+ * Creates a type and formats it for comparison
  */
-bool ReflectionUtil::findModifier(std::string modifierToFind, std::string & sig) {
-	std::string newSig = sig;
-	std::string regex = "(?:^|\\s+)" + modifierToFind + "(?:\\s+|$)";
-	boost::regex matcher;
-
-
-	matcher.assign(regex);
-	newSig = StringUtil::trim(boost::regex_replace(newSig, matcher,
-			" ", boost::match_default | boost::format_all));
-
-	if (sig != newSig) {
-		sig = newSig;
-		return true;
-	}
-
-	return false;
-}
-
-
-std::string ReflectionUtil::correctField(std::string field)
-{
-
-//	std::string resultStr;
-//
-//	boost::regex matcher;
-//	std::string newField;
-//
-//	matcher.assign(TYPE_CLEAN_REGEX_NO_ARRAY);
-//	newField = StringUtil::trim(boost::regex_replace(field, matcher,
-//			TYPE_CLEAN_REPLACE_NO_ARRAY,
-//			boost::match_default | boost::format_all));
-//
-//	//assumes it has a name
-//	size_t pos = newField.rfind(" ");
-//
-//	if (pos != string::npos)
-//	{
-//		std::string type = newField.substr((string::size_type) 0,
-//				(string::size_type) pos);
-//		std::string name = newField.substr((string::size_type) pos,
-//				(string::size_type) string::npos);
-//
-//		matcher.assign(ARRAY_MATCH_REGEX);
-//		boost::match_results<std::string::iterator> match;
-////		std::string::const_iterator start = ;
-////		std::string::const_iterator end = ;
-//
-//		while (boost::regex_search(name.begin(), name.end(), match, matcher))
-//		{
-//			type += std::string(match[0].first, match[0].second);
-//			name = std::string(name.begin(), match[0].first) +
-//					std::string(match[0].second, name.end());
-//		}
-//
-//		std::string fixType = correctType(type);
-//		//remove volatile, mutable, and const from type
-//		matcher.assign(CLEAN_FIELD_TYPE);
-////		CPGF_TRACE("before " << fixType << "\r\n")
-//		fixType = boost::regex_replace(fixType, matcher, CLEAN_FIELD_TYPE_REPLACE,
-//						boost::match_default | boost::format_all);
-////		CPGF_TRACE("after  " << fixType << "\r\n")
-//		newField = fixType + " " + name;
-//	}
-//	//clean out any extra spaces in there
-//	//put in other correct* methods - done?
-//	matcher.assign(CLEAN_SPACES);
-//	newField = boost::regex_replace(newField, matcher, CLEAN_SPACES_REPLACE,
-//				boost::match_default | boost::format_all);
-	FieldInfo info = divideFieldSignature(field);
-	return info.type + " " + info.name;
-//	return newField;
-}
-
-
-std::string ReflectionUtil::correctType(std::string type)
-{
-//	const std::string TYPE_CLEAN_REGEX = "(\\s+)|(\\()|(\\))|(^\\s+)|(\\s+$)([^\\s,]*::)";
-//	const std::string TYPE_CLEAN_REPLACE = "(?1 )(?2 )(?3 )(?4)(?5)(?6)";
+void TypeSignature::createType(const std::string & type) {
+	//	const std::string TYPE_CLEAN_REGEX = "(\\s+)|(\\()|(\\))|(^\\s+)|(\\s+$)([^\\s,]*::)";
+	//	const std::string TYPE_CLEAN_REPLACE = "(?1 )(?2 )(?3 )(?4)(?5)(?6)";
 	std::string resultStr;
 	std::set<std::string> typeModifiers;
 	typeModifiers.insert("*");
@@ -852,13 +489,15 @@ std::string ReflectionUtil::correctType(std::string type)
 	for (std::vector<std::string>::iterator it = tokens.begin();
 			it != tokens.end(); it++)
 	{
-		if (typeModifiers.count(*it) > 0)
-		{
-			modifiers.push_back(*it);
-		}
-		else
-		{
-			typeTokens.push_back(*it);
+		if (StringUtil::trim(*it) != "") {
+			if (typeModifiers.count(*it) > 0)
+			{
+				modifiers.push_back(*it);
+			}
+			else
+			{
+				typeTokens.push_back(*it);
+			}
 		}
 	}
 
@@ -867,19 +506,253 @@ std::string ReflectionUtil::correctType(std::string type)
 
 	//create string from type and then modifiers
 	resultStr = buildStr(typeTokens, " ") + " " + buildStr(modifiers, " ");
-
-	return StringUtil::trim(resultStr);
+//	CPGF_TRACE("built string: " << resultStr << "\r\n");
+	name = StringUtil::trim(resultStr);
+	signature = name;
 }
 
-void ReflectionUtil::findParams(std::string signature, int &openParen, int &closeParen)
+/**
+ * Gets the string version of the cpgf type
+ *
+ * @param type cpgf reflected type info
+ */
+TypeSignature::TypeSignature(const cpgf::GMetaType &type) : Signature()
 {
+	if (type.getBaseName()) {
+		createType(type.getBaseName());
+	}
+	else {
+		createType(type.getBaseType().getStdTypeInfo().name());
+	}
+
+	//signature = name;
+
+}
+
+
+/**
+ * Given a string representation of a type, returns if it is a pointer.
+ *
+ * @return true if it is a pointer
+ */
+bool TypeSignature::isPointerType() const {
+	return signature.find("*") != std::string::npos;
+}
+
+/**
+ * Given a string representation of a type, returns if it is a reference.
+ *
+ * @return true if it is a reference
+ */
+bool TypeSignature::isReferenceType() const {
+	return signature.find("&") != std::string::npos;
+}
+
+
+
+/**
+ * Determines, based on the signatures, the modifiers for this function/
+ * method.
+ *
+ * sig is returned without those modifiers
+ *
+ * Attempts to find the following modifiers
+ * 	const
+ * 	static
+ * 	extern
+ * 	volatile
+ * 	mutable
+ * 	[template] - not supported
+ *
+ * @param sig Signature of the function/method
+ * @return modifiers for this function
+ */
+int FieldSignature::removeModifiers(std::string & sig) {
+
+	boost::regex matcher;
+	matcher.assign(TYPE_CLEAN_REGEX_NO_ARRAY);
+	sig = StringUtil::trim(boost::regex_replace(sig, matcher,
+			TYPE_CLEAN_REPLACE_NO_ARRAY,
+			boost::match_default | boost::format_all));
+
+	int tModifiers = cpgf::metaModifierNone;
+	//static, extern, volatile, mutable
+	if (findModifier("mutable", sig)) {
+		tModifiers |= cpgf::metaModifierMutable;
+	}
+	if (findModifier("static", sig)) {
+		tModifiers |= cpgf::metaModifierStatic;
+	}
+	if (findModifier("volatile", sig)) {
+		tModifiers |= cpgf::metaModifierVolatile;
+	}
+	if (findModifier("extern", sig)) {
+		tModifiers |= cpgf::metaModifierExtern;
+	}
+	//TODO can we assume that there is no name here??
+	//const
+//	std::string tName = "";
+//	size_t arrayPos = sig.find("[");
+//	size_t namePos = sig.rfind(" ", arrayPos);
+//	if (namePos != string::npos) {
+//		tName = StringUtil::trim(sig.substr(namePos, string::npos));
+//		sig = StringUtil::trim(sig.substr(0, namePos));
+//
+//	}
+
+	matcher.assign("(?:\\s|^|\\*)(const)(?:\\s|&|$)(?:[^*]*$)");
+	if (boost::regex_search(sig, matcher)) {
+//		CPGF_TRACE("sig const match before: " << sig << "\r\n");
+
+		tModifiers |= cpgf::metaModifierConst;
+		sig = StringUtil::trim(boost::regex_replace(sig, matcher, "(?1)",
+				boost::match_default | boost::format_all));
+//		CPGF_TRACE("sig const match after: " << sig << "\r\n");
+
+
+	}
+
+	//TODO template - not handled yet
+
+
+//	if (tName != "") {
+//		sig = sig + " " + tName;
+//	}
+	matcher.assign(CLEAN_SPACES);
+	sig = StringUtil::trim(boost::regex_replace(sig, matcher,
+			CLEAN_SPACES_REPLACE, boost::match_default | boost::format_all));
+
+
+	return tModifiers;
+}
+
+/**
+ * Divides a field/variable into type, name
+ *
+ * @param sig Signature of the field/variable
+ *
+ */
+void FieldSignature::divideSignature(const std::string & sig) {
+	boost::regex matcher;
+	std::string newField;
+	std::string nType;
+
+	newField = sig;
+
+	matcher.assign(TYPE_CLEAN_REGEX_NO_ARRAY);
+	newField = StringUtil::trim(boost::regex_replace(newField, matcher,
+			TYPE_CLEAN_REPLACE_NO_ARRAY,
+			boost::match_default | boost::format_all));
+
+	//assumes it has a name
+	size_t pos = newField.rfind(" ");
+
+	if (pos != string::npos)
+	{
+		nType = newField.substr((string::size_type) 0,
+				(string::size_type) pos);
+		name = newField.substr((string::size_type) pos,
+				(string::size_type) string::npos);
+
+		matcher.assign(ARRAY_MATCH_REGEX);
+		boost::match_results<std::string::iterator> match;
+		//		std::string::const_iterator start = ;
+		//		std::string::const_iterator end = ;
+
+		while (boost::regex_search(name.begin(), name.end(), match, matcher))
+		{
+			nType += std::string(match[0].first, match[0].second);
+			name = std::string(name.begin(), match[0].first) +
+					std::string(match[0].second, name.end());
+		}
+
+		//use this to correct the type and change it back to a string
+		nType = TypeSignature(nType);
+	}
+
+	//this expects a name, so add a fake one and remove it afterwards
+	//TODO get rid of this
+	//nType += " x";
+	modifiers = removeModifiers(nType);
+	//nType = nType.substr(0, nType.length() - 2);
+
+	//clean out any extra spaces in there
+	matcher.assign(CLEAN_SPACES);
+	name = StringUtil::trim(boost::regex_replace(name, matcher,
+			CLEAN_SPACES_REPLACE, boost::match_default | boost::format_all));
+	nType = StringUtil::trim(boost::regex_replace(nType, matcher,
+			CLEAN_SPACES_REPLACE, boost::match_default | boost::format_all));
+
+	type = TypeSignature(nType);
+}
+
+
+/**
+ * Creates a field signature from reflected data
+ *
+ * @param field Field to get signature of
+ */
+FieldSignature::FieldSignature(const cpgf::GMetaField *field) : type("")
+{
+	type = TypeSignature(field->getItemType());
+//	CPGF_TRACE("MetaField Before: " << type.getSignature() << "\r\n");
+	std::string tempType = type.getSignature();
+//	CPGF_TRACE(" MetaField After: " << tempType << "\r\n");
+	modifiers = removeModifiers(tempType);
+//	CPGF_TRACE(" MetaField No Mods: " << tempType << "\r\n");
+	type = TypeSignature(tempType);
+	name = field->getName();
+	modifiers |= field->getModifiers();
+	signature = type.getSignature() + " " + name;
+}
+/**
+ * Creates a field signature from a type and name. The type is normalized
+ * (somewhat) so that it is consistent with other signatures.
+ *
+ * @param fieldType Type of the field (i.e. const int)
+ * @param name Name of the field
+ * @param modifiers Modifiers for this field
+ */
+void FieldSignature::createField(const std::string & fieldType,
+		const std::string & nName, int mods) {
+	type = TypeSignature(fieldType);
+//	CPGF_TRACE("String Field Before: " << type.getSignature() << "\r\n");
+	std::string tempType = type.getSignature();
+//	CPGF_TRACE("String Field After: " << type.getSignature() << "\r\n");
+	modifiers = removeModifiers(tempType);
+	type = TypeSignature(tempType);
+	name = nName;
+	modifiers |= mods;
+	signature = type.getSignature() + " " + name;
+}
+
+
+/**
+ * Creates a field signature from field declaration. The type is normalized
+ * (somewhat) so that it is consistent with other signatures.
+ *
+ * @param field Field declaration (i.e. const int x)
+ * @param name Name of the field
+ */
+void FieldSignature::createField(const std::string & field) {
+	divideSignature(field);
+//	CPGF_TRACE("create Field Before: " << field << "\r\n");
+	signature = type.getSignature() + " " + name;
+//	CPGF_TRACE("create Field After: " << field << "\r\n");
+}
+
+
+
+
+void MethodSignature::findParams(const std::string & signature, int &openParen,
+		int &closeParen) {
 	closeParen = -1;
 	openParen = -1 ;
 	int parenCount = 0;
 
 
 	for (int i = signature.length() - 1; i >=0 &&
-		(parenCount != 0 || closeParen == -1); i--)
+	(parenCount != 0 || closeParen == -1); i--)
 	{
 		if (signature[i] == ')')
 		{
@@ -901,23 +774,23 @@ void ReflectionUtil::findParams(std::string signature, int &openParen, int &clos
 }
 
 
-std::vector<std::string> ReflectionUtil::getParams(std::string signature,
-		int start, int end)
-{
+std::vector<TypeSignature> MethodSignature::getParams(
+		const std::string & signature, int openParen, int closeParen) {
 	std::string sig = signature;
-	std::vector<std::string> params;
+	std::vector<TypeSignature> params;
+	std::vector<std::string> strParams;
 
-	if (start != -1 && end != -1)
+	if (openParen != -1 && closeParen != -1)
 	{
-		sig = signature.substr((string::size_type) start,
-				(string::size_type) end - start + 1);
+		sig = signature.substr((string::size_type) openParen,
+				(string::size_type) closeParen - openParen + 1);
 	}
 
-	boost::split(params, sig, boost::is_any_of(","));
+	boost::split(strParams, sig, boost::is_any_of(","));
 
-	for (size_t i = 0; i < params.size(); i++)
+	for (size_t i = 0; i < strParams.size(); i++)
 	{
-		params[i] = correctType((std::string) params[i]);
+		params.push_back(TypeSignature(strParams[i]));
 	}
 
 	return params;
@@ -925,84 +798,27 @@ std::vector<std::string> ReflectionUtil::getParams(std::string signature,
 
 
 /**
- * Divides an enum into a name and a list of enums and their values
+ * Creates a string based on the contents of the vector separated by the
+ * delimiter. Simple version of a join function.
  *
- * @param sig Signature of the enum
- * @return name and a list of enums and their values
+ * @param v List of strings to join
+ * @param delim String to put between the items in the list
+ * @return The list in string form separated by delim.
  */
-EnumInfo ReflectionUtil::divideEnumSignature(std::string sig) {
-	EnumInfo info;
-
-	boost::regex matcher;
-	std::string newSig;
-	matcher.assign(SIGNATURE_CLEAN_ENUM_REGEX);
-	newSig = boost::regex_replace(sig, matcher, SIGNATURE_CLEAN_ENUM_REPLACE,
-			boost::match_default | boost::format_all);
-
-	size_t openPos = newSig.find("{", 0);
-
-	if (openPos != std::string::npos) {
-		info.name = StringUtil::trim(newSig.substr(0, openPos - 1));
-
-		size_t closePos = newSig.find("}", 0);
-		std::string values;
-		if (openPos != std::string::npos) {
-			values = StringUtil::trim(newSig.substr(openPos + 1, closePos - 1 - openPos));
-
-			std::vector<std::string> tokens;
-			std::vector<std::string> nameValue;
-			std::string name;
-			std::string token;
-			int value;
-
-			Tokenizer::tokenize(values, tokens, "([^,]+)");
-			int lastValue = -1;
-			for (size_t i = 0; i < tokens.size(); i++) {
-				token = StringUtil::trim(tokens[i]);
-
-				nameValue.clear();
-				//divide into name and value
-				Tokenizer::tokenize(token, nameValue, "([^\\s=]+)");
-				if (nameValue.size() >= (size_t) 1) {
-					name = nameValue[0];
-					if (nameValue.size() >= (size_t) 2) {
-						std::stringstream s;
-						s << nameValue[1];
-						s >> value;
-						lastValue = value;
-					}
-					else {
-						lastValue++;
-						value = lastValue;
-					}
-					//add to map
-					info.names[name] = value;
-					info.values[value] = name;
-				}
-
-			}
-		}
-	}
-	else {
-		info.name = StringUtil::trim(newSig);
-	}
-
-	return info;
-}
-
-
-
-
-std::string ReflectionUtil::correctEnum(std::string enumStr)
+std::string MethodSignature::buildStr(std::vector<TypeSignature> v,
+		const std::string & delim)
 {
-//	boost::regex matcher;
-//	std::string newEnum;
-//	matcher.assign(SIGNATURE_CLEAN_ENUM_REGEX);
-//	newEnum = boost::regex_replace(enumStr, matcher, SIGNATURE_CLEAN_ENUM_REPLACE,
-//			boost::match_default | boost::format_all);
-	EnumInfo info = divideEnumSignature(enumStr);
+	std::string resultStr;
+	for (size_t i = 0; i < v.size(); i++)
+	{
+		if (i != 0)
+		{
+			resultStr += delim;
+		}
+		resultStr += v[i].getSignature();
+	}
 
-	return info.name;
+	return resultStr;
 }
 
 
@@ -1011,43 +827,8 @@ std::string ReflectionUtil::correctEnum(std::string enumStr)
  * Determines, based on the signatures, the modifiers for this function/
  * method.
  *
- * Attempts to find the following modifiers
- * 	virtual
- * 	pure virtual
- * 	const
- * 	static
- * 	inline
- * 	extern
- * 	[template] - not supported
- *
- *
- * @param sig Signature of the function/method
- * @return modifiers for this function
  */
-//TODO test me
-int ReflectionUtil::getFunctionModifiers(std::string sig) {
-	return getAndRemoveFunctionModifiers(sig);
-}
-
-/**
- * Determines, based on the signatures, the modifiers for this function/
- * method.
- *
- * sig is returned without those modifiers
- *
- * Attempts to find the following modifiers
- * 	virtual
- * 	pure virtual
- * 	const
- * 	static
- * 	inline
- * 	extern
- * 	[template] - not supported
- *
- * @param sig Signature of the function/method
- * @return modifiers for this function
- */
-int ReflectionUtil::getAndRemoveFunctionModifiers(std::string & sig) {
+int MethodSignature::removeModifiers(std::string & sig) {
 	int modifiers = cpgf::metaModifierNone;
 	//virtual, static, inline, extern
 	if (findModifier("virtual", sig)) {
@@ -1066,9 +847,9 @@ int ReflectionUtil::getAndRemoveFunctionModifiers(std::string & sig) {
 	//const, pure virtual
 	size_t pos = sig.rfind(")");
 	if (pos != string::npos) {
-//		sig = sig.substr(0, pos);
+		//		sig = sig.substr(0, pos);
 		std::string afterParamStr = StringUtil::trim(sig.substr(pos + 1,
-							string::npos));
+				string::npos));
 		if (findModifier("const", afterParamStr)) {
 			modifiers |= cpgf::metaModifierConst;
 		}
@@ -1080,21 +861,17 @@ int ReflectionUtil::getAndRemoveFunctionModifiers(std::string & sig) {
 	return modifiers;
 }
 
-
 /**
  * Divides a function/method into return type, name, parameters.
  *
  *
- * @param sig Signature of the function/method
- * @return A vector with the return type, name, and parameters.
  */
-FunctionInfo ReflectionUtil::divideFunctionSignature(std::string sig) {
+void MethodSignature::divideSignature(const std::string & sig) {
 	int openParen;
 	int closeParen;
 	boost::regex matcher;
 	std::string newSig;
 	std::string afterParamStr;
-	FunctionInfo info;
 
 	newSig = sig;
 
@@ -1104,56 +881,233 @@ FunctionInfo ReflectionUtil::divideFunctionSignature(std::string sig) {
 
 	findParams(newSig, openParen, closeParen);
 
-	info.modifiers = getAndRemoveFunctionModifiers(newSig);
+	modifiers =removeModifiers(newSig);
 
 	//get the name and return value
-	info.returnType = "";
-	info.name = StringUtil::trim(newSig.substr((string::size_type) 0,
+	returnType = TypeSignature("");
+	name = StringUtil::trim(newSig.substr((string::size_type) 0,
 			(string::size_type) openParen));
 	size_t pos;
 	//find the name
-	pos = info.name.rfind(" ");
-	//		for (pos = nameStr.length() - 1; pos != string::npos && nameStr[pos] != ' '; pos--)
-	//		{
-	//			//do nothing
-	//		}
+	pos = name.rfind(" ");
+
 	if (pos != string::npos)
 	{
-		info.returnType = correctType(info.name.substr((string::size_type) 0,
+		returnType = TypeSignature(name.substr((string::size_type) 0,
 				(string::size_type) pos));
-		info.name = info.name.substr((string::size_type) pos + 1, string::npos);
+		name = name.substr((string::size_type) pos + 1, string::npos);
 	}
 	//get the params
-	info.params = getParams(newSig, openParen + 1, closeParen - 1);
+	params = getParams(newSig, openParen + 1, closeParen - 1);
+}
 
-	return info;
+
+void MethodSignature::createConstructor(const std::string & nName,
+		const cpgf::GMetaConstructor * construct) {
+	returnType = TypeSignature("");
+	name = nName;
+	modifiers = construct->getModifiers();
+	signature = "";
+	TypeSignature param("");
+
+	signature += name + "(";
+
+	for (size_t i = 0; i < construct->getParamCount(); i++)
+	{
+		param = TypeSignature(construct->getParamType(i));
+		params.push_back(param);
+		signature += param.getSignature();
+		if (i != construct->getParamCount() - 1)
+		{
+			signature += ", ";
+		}
+		else
+		{
+			//TODO not supported
+			if (construct->isVariadic())
+			{
+				signature += "...";
+			}
+		}
+	}
+
+	signature += ")";
+}
+
+/**
+ * Creates a function/method signature from reflected data
+ *
+ * @param method Function/method to get signature of
+ */
+MethodSignature::MethodSignature(const cpgf::GMetaMethod *method) : returnType("") {
+
+	name = method->getName();
+	modifiers = method->getModifiers();
+	signature = "";
+
+	if (method->hasResult())
+	{
+		returnType = TypeSignature(method->getResultType());
+		signature += returnType.getSignature() + " ";
+	}
+	else
+	{
+		//		CPGF_TRACE(method->getName() << " " << !isDestructor(method->getName()) << "\r\n")
+		if (isDestructor()) {
+			returnType = TypeSignature("");
+		}
+		else {
+			//			sig = "void ";
+			returnType = TypeSignature("void");
+			signature += returnType.getSignature() + " ";
+		}
+	}
+
+	signature += name + "(";
+
+	TypeSignature pType("");
+
+	for (size_t i = 0; i < method->getParamCount(); i++)
+	{
+		pType = TypeSignature(method->getParamType(i));
+		if (pType.getSignature() != "") {
+			if (i != 0) {
+				signature += ", ";
+			}
+			signature += pType.getSignature();
+			params.push_back(pType);
+			//TODO not supported
+			if (i == method->getParamCount() - 1 && method->isVariadic()) {
+				signature += "...";
+			}
+		}
+	}
+
+	signature += ")";
+
+	if ((modifiers & cpgf::metaModifierConst) != 0)
+	{
+		signature += " const";
+	}
 }
 
 
 /**
- * Takes a function signature and does a little formatting on it.
+ * Creates a function/method signature from a return type and name
+ * and list of parameter types. The type is normalized
+ * (somewhat) so that it is consistent with other signatures.
  *
- * This removes consecutive whitespace and adds a space after ,'s.
- *
- * @param signature to correct
- * @param stripNamespace removes namespaces from function/method names and
- * 	parameter names
- *
- * @return corrected signature
+ * @param returnType Return type of the function/method (i.e. const int)
+ * @param name Name of the function/method
+ * @param params List of parameter types
+ * @param modifiers Modifiers for this method
  */
-std::string ReflectionUtil::correctSignature(std::string signature)
-{
-//	int openParen;
-//	int closeParen;
+void MethodSignature::createMethod(const std::string & rType,
+		const std::string & nName,
+		const std::vector<std::string> & paramStrs, int mods) {
+	returnType = TypeSignature(rType);
+	modifiers = mods;
+	name = nName;
+
+	if (rType == "") {
+		signature = name + "(";
+	}
+	else {
+		signature = returnType.getSignature() + " " + name + "(";
+	}
+
+	for (std::vector<TypeSignature>::const_iterator i = params.begin();
+			i != params.end(); i++)
+	{
+		if (i != params.begin())
+		{
+			signature += ", ";
+		}
+		signature += *i;
+		params.push_back(TypeSignature(*i));
+	}
+
+	signature += ")";
+
+	if ((modifiers & cpgf::metaModifierConst) != 0)
+	{
+		signature += " const";
+	}
+}
+
+//constructors
+/**
+ * Creates a constructor signature from reflected data
+ *
+ * @param mClass Class that contains the constructor
+ * @param construct Constructor to get signature of
+ */
+MethodSignature::MethodSignature(const cpgf::GMetaClass *mClass,
+		const cpgf::GMetaConstructor *construct) : returnType("") {
+	createConstructor(mClass->getName(), construct);
+}
+
+/**
+ * Creates a constructor signature from reflected data
+ *
+ * @param nName Name of class that contains the constructor
+ * @param construct Constructor to get signature of
+ */
+MethodSignature::MethodSignature(const std::string & nName,
+		const cpgf::GMetaConstructor * construct) : returnType("") {
+	createConstructor(nName, construct);
+}
+
+/**
+ * Creates a constructor signature from a name
+ * and list of parameter types. The type is normalized
+ * (somewhat) so that it is consistent with other signatures.
+ *
+ * @param name Name of the function/method
+ * @param params List of parameter types
+ */
+void MethodSignature::createConstructor(const std::string & nName,
+		const std::vector<std::string> & paramStrs, int mods) {
+	returnType = TypeSignature("");
+	modifiers = mods;
+	name = nName;
+
+	signature = name + "(";
+
+	for (std::vector<std::string>::const_iterator i = paramStrs.begin();
+			i != paramStrs.end(); i++)
+	{
+		if (i != paramStrs.begin())
+		{
+			signature += ", ";
+		}
+		signature += *i;
+		params.push_back(TypeSignature(*i));
+	}
+
+	signature += ")";
+}
+
+/**
+ * Creates functions/methods/operators/constructors so they are in
+ * a standard format and can be compared.
+ *
+ *	Unlike with the fields, the const modifier is included in the signature
+ *	since
+ *		int foo()
+ *		int foo() const
+ *	are both valid, separate declarations and can coexist.
+ *
+ * @param signature functions/methods/operators/constructors signature
+ *
+ * TODO move to a more robust comparison scheme using clang
+ */
+void MethodSignature::createMethod(const std::string & sig) {
 	boost::regex matcher;
 	std::string newSig;
-//	std::string returnStr;
-//	std::string nameStr;
-//	std::string afterParamStr;
 	std::string operatorName;
-	FunctionInfo info;
 
-	newSig = signature;
+	newSig = sig;
 	//handle operators
 	//find operator token to ()
 	//replace with a default value
@@ -1177,90 +1131,23 @@ std::string ReflectionUtil::correctSignature(std::string signature)
 
 	}
 
-	info = divideFunctionSignature(newSig);
-//	matcher.assign(SIGNATURE_CLEAN_REGEX);
-//	newSig = boost::regex_replace(newSig, matcher, SIGNATURE_CLEAN_REPLACE,
-//			boost::match_default | boost::format_all);
-//
-//	findParams(newSig, openParen, closeParen);
-//	//get anything after the parameters (i.e. const)
-//	afterParamStr = StringUtil::trim(newSig.substr(
-//			(string::size_type) closeParen + 1,
-//			(string::size_type) string::npos));
-//	//get the name and return value
-//	nameStr = StringUtil::trim(newSig.substr((string::size_type) 0,
-//			(string::size_type) openParen));
-//	size_t pos;
-//	//find the name
-//	for (pos = nameStr.length() - 1; pos != string::npos && nameStr[pos] != ' '; pos--)
-//	{
-//		//do nothing
-//	}
-//	if (pos != string::npos)
-//	{
-//		returnStr = correctType(nameStr.substr((string::size_type) 0,
-//				(string::size_type) pos));
-//		nameStr = nameStr.substr((string::size_type) pos + 1, string::npos);
-//	}
-//	//get the params
-//	std::vector<std::string> params = getParams(newSig, openParen + 1,
-//			closeParen - 1);
-//
-	if (info.returnType == "" || isDestructor(info.name))
+	divideSignature(newSig);
+
+	if (returnType.getSignature() == "" || isDestructor())
 	{
-		newSig = info.name + "(";
+		newSig = name + "(";
 	}
 	else
 	{
-		newSig = info.returnType + " " + info.name + "(";
+		newSig = returnType.getSignature() + " " + name + "(";
 	}
 
-
-//	for (size_t i = 0; i < params.size(); i++)
-//	{
-//		if (i != 0)
-//		{
-//			newSig += ", ";
-//		}
-//		newSig += params[i];
-//	}
-
-	newSig += buildStr(info.params, ", ") + ")";
-//	if (afterParamStr != "")
-//	{
-//		newSig += " " + afterParamStr;
-//	}
+	newSig += buildStr(params, ", ") + ")";
 
 	//add the const to the signature if needed
-	if ((info.modifiers & cpgf::metaModifierConst) != 0) {
+	if ((modifiers & cpgf::metaModifierConst) != 0) {
 		newSig += " const";
 	}
-
-	//strip out extra ( )
-	//	go backwards counts ( ) until matching found
-	// remove rest of them
-	//break function into return, name, parameters
-	// name is right before (
-	// return type before name
-	// params in ( ) delimited by ,
-
-//	boost::regex matcher;
-
-
-//	if (stripNamespace)
-//	{
-//		matcher.assign(SIGNATURE_CLEAN_NS_REGEX);
-//	    newSig = boost::regex_replace(signature, matcher,
-//	    		SIGNATURE_CLEAN_NS_REPLACE,
-//	boost::match_default | boost::format_all);
-//	}
-//	else
-//	{
-//		matcher.assign(SIGNATURE_CLEAN_REGEX);
-//	    newSig = boost::regex_replace(signature, matcher,
-//	    		SIGNATURE_CLEAN_REPLACE,
-//	boost::match_default | boost::format_all);
-//	}
 
 	matcher.assign(CLEAN_SPACES);
 	newSig = boost::regex_replace(newSig, matcher, CLEAN_SPACES_REPLACE,
@@ -1268,255 +1155,26 @@ std::string ReflectionUtil::correctSignature(std::string signature)
 
 	//restore name
 	if (operatorMatch) {
-//		matcher.assign(FAKE_OPERATOR_NAME);
-//		newSig = boost::regex_replace(newSig, matcher, operatorName,
-//				boost::match_default | boost::format_all);
 		newSig.replace(newSig.find(FAKE_OPERATOR_NAME),
 				FAKE_OPERATOR_NAME.length(), operatorName);
 
 	}
 
-	return newSig;
+	signature = newSig;
 }
-
-
-
-/**
- * Determines, based on the signatures, the modifiers for this class.
- *
- * Attempts to find the following modifiers
- * 	virutal (for base classes)
- * 	[template] - not supported
- *
- *
- * @param sig Signature of the class
- * @return modifiers for this class
- */
-int ReflectionUtil::getClassModifiers(std::string sig) {
-	return getAndRemoveClassModifiers(sig);
-}
-
-/**
- * Determines, based on the signatures, the modifiers for this function/
- * method.
- *
- * sig is returned without those modifiers
- *
- * Attempts to find the following modifiers
- * 	virutal (for base classes)
- * 	[template] - not supported
- *
- * @param sig Signature of the class
- * @return modifiers for this class
- */
-int ReflectionUtil::getAndRemoveClassModifiers(std::string & sig) {
-	int modifiers = cpgf::metaModifierNone;
-	//virtual, static, inline, extern
-	if (findModifier("virtual", sig)) {
-		modifiers |= cpgf::metaModifierVirtual;
-	}
-
-	//TODO template - not handled yet
-	return modifiers;
-}
-
-/**
- * Divides a class into name, enclosing class, and modifiers.
- *
- *
- * @param sig Signature of the class
- * @return Info on the class
- */
-ClassInfo ReflectionUtil::divideClassSignature(std::string sig) {
-	ClassInfo info;
-
-	info.modifiers = getAndRemoveClassModifiers(sig);
-	info.enclosingClass = "";
-	info.name = sig;
-	size_t pos = info.name.rfind("::");
-	if (pos != std::string::npos) {
-		info.enclosingClass = info.name.substr(0, pos);
-		info.name = info.name.substr(pos + 2, string::npos);
-	}
-
-	return info;
-}
-
-/**
- * Utility method that corrects the formatting of
- * (inner) classes so they are in
- * a standard format and can be compared.
- *
- * @param signature class signature
- * @return Corrected signature
- *
- */
-std::string ReflectionUtil::correctClassSignature(std::string signature) {
-//	size_t pos = signature.rfind("::");
-//	if (pos != std::string::npos) {
-//		return signature.substr(pos + 2, string::npos);
-//	}
-
-	ClassInfo info = divideClassSignature(signature);
-	return info.name;
-}
-
-
-
-std::string ReflectionUtil::createFieldSignature(const std::string & fieldType,
-		const std::string & name)
-{
-	return correctSignature(fieldType + " " + name);
-}
-
-
-
-//methods
-
-//std::string ReflectionUtil::createFunctionSignature(std::string returnType, std::string name,
-//		int paramCount, std::string params...)
-//{
-//	std::list<std::string> paramList;
-//
-//	va_list paramArgs;
-//	va_start(paramArgs, params);
-//
-//	for (int i = 0; i < paramCount; i++) {
-//		paramList.push_back(va_arg(paramArgs, std::string));
-//	}
-//
-//	va_end(paramArgs);
-//
-//	return createFunctionSignature(returnType, name, paramList);
-//}
-
-
-std::string ReflectionUtil::createFunctionSignature(std::string returnType, std::string name,
-		const std::vector<std::string> & params, bool isConst)
-{
-	std::string sig = returnType + " " + name + "(";
-
-	for (std::vector<std::string>::const_iterator i = params.begin();
-			i != params.end(); i++)
-	{
-		if (i != params.begin())
-		{
-			sig += ", ";
-		}
-		sig += *i;
-
-	}
-
-	sig += ")";
-
-//	if (isConst)
-//	{
-//		sig += " const";
-//	}
-
-	return correctSignature(sig);
-}
-
-
-
-//constructors
-//std::string ReflectionUtil::createConstructorSignature(std::string name,
-//		int paramCount, std::string params...)
-//{
-//	std::list<std::string> paramList;
-//
-//	va_list paramArgs;
-//	va_start(paramArgs, params);
-//
-//	for (int i = 0; i < paramCount; i++) {
-//		paramList.push_back(va_arg(paramArgs, std::string));
-//	}
-//
-//	va_end(paramArgs);
-//
-//	return createConstructorSignature(name, paramList);
-//}
-
-
-std::string ReflectionUtil::createConstructorSignature(std::string name,
-		const std::vector<std::string> & params)
-{
-	std::string sig = name + "(";
-
-	for (std::vector<std::string>::const_iterator i = params.begin();
-			i != params.end(); i++)
-	{
-		if (i != params.begin())
-		{
-			sig += ", ";
-		}
-		sig += *i;
-
-	}
-
-	sig += ")";
-
-	return correctSignature(sig);
-}
-
-
-
-//operators
-//std::string ReflectionUtil::createOperatorSignature(std::string returnType, std::string name,
-//		int paramCount, std::string params...)
-//{
-//	std::list<std::string> paramList;
-//
-//	va_list paramArgs;
-//	va_start(paramArgs, params);
-//
-//	for (int i = 0; i < paramCount; i++) {
-//		paramList.push_back(va_arg(paramArgs, std::string));
-//	}
-//
-//	va_end(paramArgs);
-//
-//	return createOperatorSignature(returnType, name, paramList);
-//}
-
-
-//std::string ReflectionUtil::createOperatorSignature(std::string returnType, std::string name,
-//		const std::vector<std::string> & params)
-//{
-//	std::string sig = returnType + " " + name + "(";
-//
-//		for (std::vector<std::string>::const_iterator i = params.begin();
-//				i != params.end(); i++)
-//		{
-//			if (i != params.begin())
-//			{
-//				sig += ", ";
-//			}
-//			sig += *i;
-//
-//		}
-//
-//		sig += ")";
-//
-//		return correctSignature(sig);
-//}
-
 
 
 /**
  * Determines if the operator is one of the postfix operators
  * (x++ or x--)
  *
- * @param sig signature to check
  * @return true if it is the signature of an postfix operator
  */
-bool ReflectionUtil::isPostFixOperator(std::string sig) {
+bool MethodSignature::isPostFixOperator() const {
 	boost::regex matcher;
-		matcher.assign(POSTFIX_OPERATOR_PATTERN);
-		return boost::regex_match(correctSignature(sig), matcher);
+	matcher.assign(POSTFIX_OPERATOR_PATTERN);
+	return boost::regex_match(signature, matcher);
 }
-
-
 
 /**
  * Determines if this signature matches the pattern of names for auto-
@@ -1526,50 +1184,85 @@ bool ReflectionUtil::isPostFixOperator(std::string sig) {
  * 	 where spaces are replaced with _, & is replaced with ref, and
  * 	 is replaced with ptr.
  * This method checks the signature against the regex
- * 	 opErAToRWrapper_.*_array_.*
+ * 	 .*\bopErAToRWrapper_.*_array_.*
  * to see if it is valid.
  *
- * @param sig signature to check
  * @return true if it is the signature of an array setter method
  */
-bool ReflectionUtil::isArraySetterSignature(std::string sig) {
+bool MethodSignature::isArraySetterSignature() const {
 	boost::regex matcher;
 	matcher.assign(ARRAY_WRAPPER_PATTERN);
-	return boost::regex_match(correctSignature(sig), matcher);
+	return boost::regex_match(signature, matcher);
 }
 
 /**
  * Determines if this signature matches the operator[] method and that it
  * does not return a const result.
  *
- * @param sig signature to check
  * @return true if it is the signature of an array setter method
  */
-bool ReflectionUtil::isSettableArrayOperator(std::string sig) {
+bool MethodSignature::isSettableArrayOperator() const {
 	boost::regex nonConstMatcher(ARRAY_OPERATOR_PATTERN);
 	boost::regex constMatcher(ARRAY_OPERATOR_CONST_PATTERN);
-	std::string cSig = correctSignature(sig);
+	std::string cSig = signature;
 	return boost::regex_match(cSig, nonConstMatcher)
-		&& !boost::regex_match(cSig, constMatcher);
+	&& !boost::regex_match(cSig, constMatcher);
 }
 
 
+/**
+ * Determines if this signature matches the pattern of names for auto-
+ * generated copy function (see createCopyFunctionSignature). Signatures
+ * should have the form:
+ * 	 cOpYwRaPpEr_<class name>
+ *
+ * This method checks the signature against the regex
+ * 	 .*\bopErAToRWrapper_.*
+ * to see if it is valid.
+ *
+ * @return true if it is the signature of an array setter method
+ */
+bool MethodSignature::isCopyFunctionSignature() const {
+	boost::regex matcher;
+	matcher.assign(COPY_WRAPPER_PATTERN);
+	return boost::regex_match(signature, matcher);
+}
+
 
 /**
- * Utility method that creates a method signature for the auxilary function
+ * Determines if the name of this method refers to a destructor
+ *
+ * @return true if it is a destructor
+ */
+bool MethodSignature::isDestructor() const {
+	return (name != "" && name[0] == '~');
+}
+
+
+/**
+ * Utility method that creates a method signature for the auxiliary function
  * used to simulate setting a value with the [] operator
  * (i.e. x[2] = 4)
  *
+ * The result returned has the form:
+ * 	opErAToRWrapper_<class name>_<return type>_array_<params>
+ * 	where spaces are replaced with _, & is replaced with ref, and
+ * 	* is replaced with ptr
+ *
  * @param className Name of the class
- * @param arrayOpSignature signature of the operator being called
- * 	(i.e. string & operator[](int) )
+ * @return signature for the array setter function or "" if this method
+ * is an [] operator signature
  */
-std::string ReflectionUtil::createArraySetterSignature(std::string className,
-		std::string arrayOpSignature) {
+MethodSignature MethodSignature::createArraySetterSignature(
+		const std::string & className) const {
 
-	std::string cleanedName = correctSignature(arrayOpSignature);
+	if (!isSettableArrayOperator()) {
+		return MethodSignature("");
+	}
+
+	std::string cleanedName = signature;
 	std::string name = ARRAY_WRAPPER_PREFIX + className + "_" +
-			correctSignature(arrayOpSignature);
+			signature;
 	//opErAToRWrapper_Operators_int_ref_array_int
 
 	//get rid of ,'s, ( ), &, *
@@ -1587,189 +1280,231 @@ std::string ReflectionUtil::createArraySetterSignature(std::string className,
 			matcher, "(?1" + name + ")",
 			boost::match_default | boost::format_all);
 
-	return newSig;
+	return MethodSignature(newSig);
 }
 
 
-
 /**
- * Takes a function/method signature and returns the return type
+ * Determines, based on the signatures, the modifiers for this function/
+ * method.
  *
- * @param signature signature of the function/method
- * @return the return type of the function/method as a string
+ * sig is returned without those modifiers
+ *
+ * Attempts to find the following modifiers
+ * 	virutal (for base classes)
+ * 	[template] - not supported
+ *
+ * @param sig Signature of the function/method
+ * @return modifiers for this function
  */
-std::string ReflectionUtil::getReturnType(std::string signature) {
-	std::string newSig = correctSignature(signature);
-	int openParen;
-	int closeParen;
-	std::string returnStr = "";
-
-	findParams(newSig, openParen, closeParen);
-
-	//get the name and return value
-	std::string nameStr = StringUtil::trim(newSig.substr((string::size_type) 0,
-			(string::size_type) openParen));
-	size_t pos;
-	//find the name
-	for (pos = nameStr.length() - 1; pos != string::npos
-		&& nameStr[pos] != ' '; pos--)
-	{
-		//do nothing
-	}
-	if (pos != string::npos)
-	{
-		returnStr = correctType(nameStr.substr((string::size_type) 0,
-				(string::size_type) pos));
+int ClassSignature::removeModifiers(std::string sig) {
+	int mods = cpgf::metaModifierNone;
+	//virtual
+	if (findModifier("virtual", sig)) {
+		mods |= cpgf::metaModifierVirtual;
 	}
 
-	return returnStr;
+	//TODO template - not handled yet
+	return mods;
 }
 
-
-
-
 /**
- * Given a string representation of a type, returns if it is a pointer.
+ * Divides a class into name, enclosing class, and modifiers.
  *
- * @param type Type signature
- * @return true if it is a pointer
+ * @param sig Signature of the class
  */
-bool ReflectionUtil::isPointerType(std::string type) {
-	return type.find("*") != std::string::npos;
+void ClassSignature::divideSignature(const std::string & sig) {
+	modifiers = removeModifiers(sig);
+	enclosingClass = "";
+	name = sig;
+	size_t pos = name.rfind("::");
+	if (pos != std::string::npos) {
+		enclosingClass = name.substr(0, pos);
+		name = name.substr(pos + 2, string::npos);
+	}
+	if (enclosingClass == "") {
+		signature = name;
+	}
+	else {
+		signature = enclosingClass + "::" + name;
+	}
 }
 
+
+
 /**
- * Given a string representation of a type, returns if it is a reference.
+ * Corrects the formatting of
+ * (inner) classes so they are in
+ * a standard format and can be compared.
  *
- * @param type Type signature
- * @return true if it is a reference
+ * @param sig class signature
+ *
+ * TODO move to a more robust comparison scheme using clang
  */
-bool ReflectionUtil::isReferenceType(std::string type) {
-	return type.find("&") != std::string::npos;
+void ClassSignature::createClass(const std::string & sig) {
+	divideSignature(sig);
+}
+
+/**
+ * Corrects the formatting of
+ * (inner) classes so they are in
+ * a standard format and can be compared.
+ *
+ * @param signature class signature
+ *
+ */
+ClassSignature::ClassSignature(const cpgf::GMetaClass * cClass) {
+	std::string tName = cClass->getName();
+
+	const cpgf::GMetaClass * parent = static_cast<const cpgf::GMetaClass *>(
+			cClass->getOwnerItem());
+
+	modifiers = removeModifiers(tName);
+	name = tName;
+	if (parent != NULL && parent->getName() != ""
+			&& parent->getName() != "cpptest") {
+		enclosingClass = parent->getName();
+		signature =  enclosingClass + "::" + name;
+
+	}
+	else {
+		signature = name;
+	}
 }
 
 
 /**
-	 * Determines if this signature matches the pattern of names for auto-
-	 * generated copy function (see createCopyFunctionSignature). Signatures
-	 * should have the form:
-	 * 	 cOpYwRaPpEr_<class name>
-	 *
-	 * This method checks the signature against the regex
-	 * 	 .*\bopErAToRWrapper_.*
-	 * to see if it is valid.
-	 *
-	 * @param sig signature to check
-	 * @return true if it is the signature of an array setter method
-	 */
-bool ReflectionUtil::isCopyFunctionSignature(std::string sig) {
+ * Utility method that creates a method signature for the auxiliary function
+ * used to copy objects of reflected classes when they are returned from
+ * methods/functions. This avoids the problem where they go out of scope
+ * before they are used.
+ *
+ * The result returned has the form:
+ * 	cOpYwRaPpEr_<class name>
+ *
+ * @return signature for the copy function
+ */
+MethodSignature ClassSignature::createCopyFunctionSignature() const {
+	return MethodSignature(name + " * " + COPY_WRAPPER_PREFIX + name
+			+ "(" + name + " *)");
+}
+
+
+/**
+ * Divides an enum into a name and a list of enums and their values
+ *
+ * @param sig Signature of the class
+ */
+void EnumSignature::divideSignature(const std::string & sig) {
+
 	boost::regex matcher;
-	matcher.assign(COPY_WRAPPER_PATTERN);
-	return boost::regex_match(correctSignature(sig), matcher);
-}
+	std::string newSig;
+	matcher.assign(SIGNATURE_CLEAN_ENUM_REGEX);
+	newSig = boost::regex_replace(sig, matcher, SIGNATURE_CLEAN_ENUM_REPLACE,
+			boost::match_default | boost::format_all);
 
+	size_t openPos = newSig.find("{", 0);
 
-	/**
-	 * Utility method that creates a method signature for the auxiliary function
-	 * used to copy objects of reflected classes when they are returned from
-	 * methods/functions. This avoids the problem where they go out of scope
-	 * before they are used.
-	 *
-	 * The result returned has the form:
-	 * 	cOpYwRaPpEr_<class name>
-	 *
-	 * @param className Name of the class
-	 * @return signature for the copy function
-	 */
-std::string ReflectionUtil::createCopyFunctionSignature(std::string className) {
-	std::string name = COPY_WRAPPER_PREFIX + className;
+	if (openPos != std::string::npos) {
+		name = StringUtil::trim(newSig.substr(0, openPos - 1));
 
-//cpgf::GVariant cOpYwRaPpEr_Operators(Operators * self)
-	return className + " * " + name + "(" + className + " *)";
+		size_t closePos = newSig.find("}", 0);
+		std::string eValues;
+		if (openPos != std::string::npos) {
+			eValues = StringUtil::trim(newSig.substr(openPos + 1, closePos - 1 - openPos));
+
+			std::vector<std::string> tokens;
+			std::vector<std::string> nameValue;
+			std::string name;
+			std::string token;
+			int value;
+
+			Tokenizer::tokenize(eValues, tokens, "([^,]+)");
+			int lastValue = -1;
+			for (size_t i = 0; i < tokens.size(); i++) {
+				token = StringUtil::trim(tokens[i]);
+
+				nameValue.clear();
+				//divide into name and value
+				Tokenizer::tokenize(token, nameValue, "([^\\s=]+)");
+				if (nameValue.size() >= (size_t) 1) {
+					name = nameValue[0];
+					if (nameValue.size() >= (size_t) 2) {
+						std::stringstream s;
+						s << nameValue[1];
+						s >> value;
+						lastValue = value;
+					}
+					else {
+						lastValue++;
+						value = lastValue;
+					}
+					//add to map
+					names[name] = value;
+					values[value] = name;
+				}
+
+			}
+		}
+	}
+	else {
+		name = StringUtil::trim(newSig);
+	}
+
+	modifiers = cpgf::metaModifierNone;
 }
 
 
 /**
- * Determines if the name of this method refers to a destructor
+ * Corrects the formatting of enums so they are in
+ * a standard format and can be compared.
  *
- * @param name Name of the method
- * @return true if it is a destructor
+ * @param enumStr enum signature
+ *
+ * TODO move to a more robust comparison scheme using clang
  */
-bool ReflectionUtil::isDestructor(std::string name) {
-	return (name != "" && name[0] == '~');
+void EnumSignature::createEnum(const std::string & enumStr) {
+	divideSignature(enumStr);
+	signature = enumStr;
+}
+
+/**
+ * Corrects the formatting of enums so they are in
+ * a standard format and can be compared.
+ *
+ * @param eEnum reflected enum
+ *
+ */
+EnumSignature::EnumSignature(const cpgf::GMetaEnum * eEnum) {
+	name = eEnum->getName();
+	modifiers = cpgf::metaModifierNone;
+	signature = name + "{";
+
+	int value;
+	std::string key;
+	std::string valueStr;
+
+	for (size_t i = 0; i < eEnum->getCount(); i++) {
+		if (i != 0) {
+			signature += ", ";
+		}
+
+		key = eEnum->getKey(i);
+		value = cpgf::fromVariant<int>(eEnum->getValue(i));
+		names[key] = value;
+		values[value] = key;
+		std::stringstream convert;
+		convert << value;
+		convert >> valueStr;
+		signature += key + " = " + valueStr;
+	}
+
+	signature += "}";
 }
 
 
-///**
-// * Gets the name from a non-reflected enumeration which has the form
-// *  <name> {<enum> [= <value>], ...}
-// * @param signature Signature of the enum
-// * @return name of the enum
-// */
-//std::string ReflectionUtil::getEnumName(std::string signature) {
-//	size_t openPos = signature.find("{", 0);
-//
-//	std::string name;
-//	if (openPos != std::string::npos) {
-//		name = StringUtil::trim(signature.substr(0, openPos - 1));
-//	}
-//	else {
-//		name = signature;
-//	}
-//
-//	return name;
-//}
-//
-///**
-// * Gets the values from a non-reflected enumeration which has the form
-// *  <name> {<enum> [= <value>], ...}
-// * @param signature Signature of the enum
-// * @return map with the name of the value and the value
-// */
-//std::map<std::string, int> ReflectionUtil::getEnumValues(
-//		std::string signature) {
-//	size_t openPos = signature.find("{", 0);
-//	size_t closePos = signature.find("}", 0);
-//	std::map<std::string, int> data;
-//	std::string values;
-//	if (openPos != std::string::npos) {
-//		values = StringUtil::trim(signature.substr(openPos + 1, closePos - 1 - openPos));
-//
-//		std::vector<std::string> tokens;
-//		std::vector<std::string> nameValue;
-//		std::string name;
-//		std::string token;
-//		int value;
-//
-//		Tokenizer::tokenize(values, tokens, "([^,]+)");
-//		int lastValue = -1;
-//		for (size_t i = 0; i < tokens.size(); i++) {
-//			token = StringUtil::trim(tokens[i]);
-//
-//			nameValue.clear();
-//			//divide into name and value
-//			Tokenizer::tokenize(token, nameValue, "([^\\s=]+)");
-//			if (nameValue.size() >= (size_t) 1) {
-//				name = nameValue[0];
-//				if (nameValue.size() >= (size_t) 2) {
-//					std::stringstream s;
-//					s << nameValue[1];
-//					s >> value;
-//					lastValue = value;
-//				}
-//				else {
-//					lastValue++;
-//					value = lastValue;
-//				}
-//				//add to map
-//				data[name] = value;
-//			}
-//
-//		}
-//	}
-//
-//	return data;
-//}
+
+
 
 
 

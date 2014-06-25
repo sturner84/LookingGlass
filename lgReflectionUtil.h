@@ -17,86 +17,54 @@ namespace cpptesting {
 
 
 /**
- * Describes a field/variable.
+ * @class Signature
+ * Base class for all item signatures.
+ * This stores the name, signature, and modifiers for a signature and provides
+ * some common methods.
  *
- * This is intended to be used to pass information around and not for more
- * permanent storage. For that, see ReflectedItem and its subclasses.
+ * @author scturner
+ * @version 6/23/2014
  */
-struct FieldInfo {
+class Signature {
+protected:
+	/**
+	 * Name of the item (variable name, method name, etc.)
+	 */
 	std::string name;
-	std::string type;
+	/**
+	 * Modifiers applied to the item (static, virtual, etc.)
+	 * List of modifiers from cpgf/gmetacommon.h that apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 *
+	 */
 	int modifiers;
-};
 
-/**
- * Describes a function/method/constructor
- *
- * This is intended to be used to pass information around and not for more
- * permanent storage. For that, see ReflectedItem and its subclasses.
- */
-struct FunctionInfo {
-	std::string name;
-	std::string returnType;
-	int modifiers;
-	std::vector<std::string> params;
-};
+	/**
+	 * signature of the item (int x, double foo(int), etc.)
+	 * Kept mostly as a convenience since it is used a lot.
+	 */
+	std::string signature;
 
+	/**
+	 * Creates a string based on the contents of the vector separated by the
+	 * delimiter. Simple version of a join function.
+	 *
+	 * @param v List of strings to join
+	 * @param delim String to put between the items in the list
+	 * @return The list in string form separated by delim.
+	 */
+	virtual std::string buildStr(std::vector<std::string> v, std::string delim) const;
 
-/**
- * Describes a class
- *
- * This is intended to be used to pass information around and not for more
- * permanent storage. For that, see ReflectedItem and its subclasses.
- */
-struct ClassInfo {
-	std::string name;
-	std::string enclosingClass;
-	int modifiers;
-};
-
-/**
- * Describes an enum
- *
- * This is intended to be used to pass information around and not for more
- * permanent storage. For that, see ReflectedItem and its subclasses.
- */
-struct EnumInfo {
-	std::string name;
-//	int modifiers;
-	std::map<std::string, int> names;
-	std::map<int, std::string> values;
-};
-
-
-class ReflectionUtil
-{
-private:
-	static ReflectionUtil instance;
-
-	ReflectionUtil();
-
-//	std::map<std::string, std::string> operatorSymToName;
-//	std::map<std::string, std::string> operatorNameToSym;
-//	std::map<int, std::string> operatorNumberToSym;
-//	std::map<std::string, int> operatorSymToNumber;
-
-//	void loadOperatorNames();
-	static std::string getType(const cpgf::GMetaType &type);
-
-	static std::string buildStr(std::vector<std::string> v, std::string delim);
-	static std::vector<std::string> & correctModifiers(
-			std::vector<std::string> &v);
-	static void findParams(std::string signature, int &openParen, int &closeParen);
-	static std::vector<std::string> getParams(std::string signature, int openParen,
-			int closeParen);
-
-//	static int getNumberFromName(std::string name);
-	static void swapModifiers(std::vector<std::string> & values,
-			int & first, int & second);
-
-	//reorder volatile const mutable
-	static void reorderModifiers(std::vector<std::string> & values,
-			int & volatilePos, int & constPos, int & mutablePos);
 
 	/**
 	 * Tries to find the modifier in the signature and removes it if found.
@@ -112,285 +80,335 @@ private:
 	 *
 	 * @return true if the modifier was found and removed.
 	 */
-	static bool findModifier(std::string modifierToFind, std::string & sig);
+	virtual bool findModifier(std::string modifierToFind, std::string & sig) const;
+
+	/**
+	 * Default constructor
+	 */
+	Signature() : name(""), modifiers(0), signature("") {}
+
+	//	/**
+	//	 * Utility method that corrects the formatting of types so they are in
+	//	 * a standard format and can be compared.
+	//	 *
+	//	 * @param type type signature
+	//	 * @return Corrected signature
+	//	 *
+	//	 * TODO move to a more robust comparison scheme using clang
+	//	 */
+	//	virtual std::string correctType(std::string type);
+	//TODO document
+	virtual std::vector<std::string> & correctModifiers(
+			std::vector<std::string> &v);
+	virtual void swapModifiers(std::vector<std::string> & values,
+			int & first, int & second);
+
+	//reorder volatile const mutable
+	virtual void reorderModifiers(std::vector<std::string> & values,
+			int & volatilePos, int & constPos, int & mutablePos);
+
+public:
+	/**
+	 * Creates a signature from a know good signature
+	 */
+	Signature(const std::string & sig) : name(sig), modifiers(0), signature(sig) {}
+
+	/**
+	 * Creates a signature from a know good signature
+	 */
+	Signature(const char * sig) : name(sig), modifiers(0), signature(sig) {}
+
+	/**
+	 * Destroys this signature
+	 */
+	virtual ~Signature() { }
+
+	/**
+	 * Gets the item's name (x, foo, etc.)
+	 * @return Item's name
+	 */
+	virtual std::string getName() const { return name; }
+
+	/**
+	 * Gets the modifiers for this item (static, virtual, etc.)
+	 * @return Modifiers for this item.
+	 */
+	virtual int getModifiers() const { return modifiers; }
+
+	//TODO allow modifiers to be added/changed
+	// use instead of modifiers parameter
+	//TODO include some notion of exact match?
+
+	/**
+	 * Gets the full signature of the item
+	 */
+	virtual std::string getSignature() const { return signature; }
+
+	/**
+	 * Casts the Signature to a string as needed
+	 */
+	virtual operator std::string() const { return signature; }
+};
+
+
+/**
+ * @class TypeSignature
+ * Signature for a single type.
+ *
+ * The name for this is the same as the signature
+ *
+ * @author scturner
+ * @version 6/23/2014
+ */
+class TypeSignature : public Signature {
+protected:
+	/**
+		 * Creates a type and formats it for comparison
+		 *
+		 * @param type Type as a string
+		 */
+	virtual void createType(const std::string &  type);
 public:
 
-//	/**
-//	 * Looks up the c++ operator name based on an operators reflected function
-//	 * (i.e. _opAdd, _opLeftShift, etc.)
-//	 *
-//	 * prefix ++ and -- will return ++operator and --operator to
-//	 * 	differential them from the postfix operators
-//	 *
-//	 * The operator[] is divided into two operations: get and set. The function
-//	 * _opArrayGet will return operator[]Get and _opArraySet will return
-//	 * operator[]Set.
-//	 *
-//	 * @param opSymbol the name of the reflected function
-//	 *
-//	 * @return Name of the operator  (i.e. operator+, operator<<, etc.)
-//	 */
-//	static std::string getOperatorSymbol(std::string opName);
-//
-//	/**
-//	 * Looks up an operator's reflected function based on the c++ operator name
-//	 * (i.e. operator+, operator<<, etc.)
-//	 *
-//	 * prefix ++ and -- are designated as ++operator and --operator to
-//	 * 	differential them from the postfix operators
-//	 *
-//	 * The operator[] is divided into two operations: get and set. To access
-//	 * them you need operator[]Get and operator[]Set respectively.
-//	 *
-//	 * @param opSymbol Symbol of the operator  (i.e. operator+, operator<<, etc.)
-//	 *
-//	 * @return the name of the reflected function
-//	 */
-//	static std::string getOperatorName(std::string opSymbol);
-//
-//	/**
-//	 * Looks up the c++ operator name based on an operators reflected number
-//	 * (defined in gmetaoperatorop.h)
-//	 *
-//	 * prefix ++ and -- will return ++operator and --operator to
-//	 * 	differential them from the postfix operators
-//	 *
-//
-//	 * @param operatorNum the number of the reflected operator
-//	 *
-//	 * @return Name of the operator  (i.e. operator+, operator<<, etc.)
-//	 */
-//	static std::string getOperatorSymbol(int operatorNum);
-//
-//	/**
-//	 * Looks up an operator's reflected number based on the c++ operator name
-//	 * (i.e. operator+, operator<<, etc.)
-//	 *
-//	 * prefix ++ and -- are designated as ++operator and --operator to
-//	 * 	differential them from the postfix operators
-//	 *
-//	 * @param opSymbol Symbol of the operator  (i.e. operator+, operator<<, etc.)
-//	 *
-//	 * @return the number of the reflected operator
-//	 */
-//	static int getOperatorNumber(std::string opSymbol);
+	/**
+	 * Creates a type and formats it for comparison
+	 *
+	 * @param type Type as a string
+	 */
+	TypeSignature(const std::string &  type) { createType(type); }
 
-	//fields
+	/**
+	 * Creates a type and formats it for comparison
+	 *
+	 * @param type Type as a string
+	 */
+	TypeSignature(const char * type) { createType(type); }
+
+	/**
+	 * Gets the string version of the cpgf type
+	 *
+	 * @param type cpgf reflected type info
+	 */
+	TypeSignature(const cpgf::GMetaType &type);
+
+	/**
+	 * Given a string representation of a type, returns if it is a pointer.
+	 *
+	 * @return true if it is a pointer
+	 */
+	virtual bool isPointerType() const;
+
+	/**
+	 * Given a string representation of a type, returns if it is a reference.
+	 *
+	 * @return true if it is a reference
+	 */
+	virtual bool isReferenceType() const;
+};
+
+
+/**
+ * @class FieldSignature
+ * Represents a field which its type and name.
+ *
+ * @author scturner
+ * @version 6/23/2014
+ */
+class FieldSignature : public Signature {
+protected:
+	/**
+	 * Type of this field
+	 */
+	TypeSignature type;
+
+	/**
+	 * Determines, based on the signatures, the modifiers for this function/
+	 * method.
+	 *
+	 * sig is returned without those modifiers
+	 *
+	 * Attempts to find the following modifiers
+	 * 	const
+	 * 	static
+	 * 	extern
+	 * 	volatile
+	 * 	mutable
+	 * 	[template] - not supported
+	 *
+	 * @param sig Signature of the function/method
+	 * @return modifiers for this function
+	 */
+	int removeModifiers(std::string & sig);
+
+	/**
+	 * Divides a field/variable into type, name
+	 *
+	 * @param sig Signature to divide
+	 *
+	 */
+	virtual void divideSignature(const std::string &  sig);
+
+
+	/**
+	 * Creates a field signature from field declaration. The type is normalized
+	 * (somewhat) so that it is consistent with other signatures.
+	 *
+	 * @param field Field declaration (i.e. const int x)
+	 */
+	virtual void createField(const std::string & field);
+
+	/**
+		 * Creates a field signature from a type and name. The type is normalized
+		 * (somewhat) so that it is consistent with other signatures.
+		 *
+		 * @param fieldType Type of the field (i.e. const int)
+		 * @param nName Name of the field
+		 * @param mods Modifiers for this field
+		 */
+	virtual void createField(const std::string &  fieldType,
+			const std::string &  nName, int mods);
+public:
+	/**
+	 * Gets the type of this field
+	 */
+	virtual TypeSignature getType() const { return type; }
+
 	/**
 	 * Creates a field signature from reflected data
 	 *
 	 * @param field Field to get signature of
-	 * @return Signature of the field (i.e. int x)
 	 */
-	static std::string createFieldSignature(const cpgf::GMetaField *field);
-
+	FieldSignature(const cpgf::GMetaField *field);
 
 	/**
 	 * Creates a field signature from a type and name. The type is normalized
 	 * (somewhat) so that it is consistent with other signatures.
 	 *
 	 * @param fieldType Type of the field (i.e. const int)
-	 * @param name Name of the field
-	 * @return Signature of the field (i.e. int x)
+	 * @param nName Name of the field
+	 * @param mods Modifiers for this field
 	 */
-	static std::string createFieldSignature(const std::string & fieldType,
-			const std::string & name);
+	FieldSignature(const std::string &  fieldType, const std::string &  nName,
+			int mods) : type("") {
+		createField(fieldType, nName, mods);
+	}
 
-	//methods
 	/**
-	 * Creates a function/method signature from reflected data
-	 *
-	 * @param method Function/method to get signature of
-	 * @return Signature of the function/method (i.e. int foo(int, double)
-	 */
-	static std::string createFunctionSignature(const cpgf::GMetaMethod *method);
-	//	static std::string createFunctionSignature(std::string returnType, std::string name,
-	//			int paramCount, std::string params...);
-	//methods
-	/**
-	 * Creates a function/method signature from a return type and name
-	 * and list of parameter types. The type is normalized
+	 * Creates a field signature from a type and name. The type is normalized
 	 * (somewhat) so that it is consistent with other signatures.
 	 *
-	 * @param returnType Return type of the function/method (i.e. const int)
-	 * @param name Name of the function/method
-	 * @param params List of parameter types
-	 * @return Signature of the function/method (i.e. int foo(int, double)
+	 * @param fieldType Type of the field (i.e. const int)
+	 * @param nName Name of the field
+	 * @param mods Modifiers for this field
 	 */
-	static std::string createFunctionSignature(std::string returnType, std::string name,
-			const std::vector<std::string> & params, bool isConst = false);
+	FieldSignature(const char * fieldType, const char * nName, int mods)
+		: type("") {
+		createField(fieldType, nName, mods);
+	}
 
-	//constructors
+	/**
+	 * Creates a field signature from field declaration. The type is normalized
+	 * (somewhat) so that it is consistent with other signatures.
+	 *
+	 * @param field Field declaration (i.e. const int x)
+	 */
+	FieldSignature(const std::string & field) : type("") {
+		createField(field);
+	};
+
+	/**
+	 * Creates a field signature from field declaration. The type is normalized
+	 * (somewhat) so that it is consistent with other signatures.
+	 *
+	 * @param field Field declaration (i.e. const int x)
+	 * @param name Name of the field
+	 */
+	FieldSignature(const char * field) : type("") { createField(field); };
+
+	/**
+	 * Destroys this FieldSignature
+	 */
+	virtual ~FieldSignature() { }
+};
+
+
+/**
+ * @class MethodSignature
+ * Represents a method/function with its name, return type, and parameters
+ *
+ * @author scturner
+ * @version 6/23/2014
+ */
+class MethodSignature : public Signature {
+protected:
+	/**
+	 * Return type of the method as a String
+	 */
+	TypeSignature returnType;
+
+	/**
+	 * Parameters (type) of the method as strings
+	 */
+	std::vector<TypeSignature> params;
+
+	//TODO document
+
+	virtual void findParams(const std::string &  signature, int &openParen,
+			int &closeParen);
+	virtual std::vector<TypeSignature> getParams(const std::string &  signature,
+			int openParen, int closeParen);
+
+	/**
+	 * Creates a string based on the contents of the vector separated by the
+	 * delimiter. Simple version of a join function.
+	 *
+	 * @param v List of strings to join
+	 * @param delim String to put between the items in the list
+	 * @return The list in string form separated by delim.
+	 */
+	virtual std::string buildStr(std::vector<TypeSignature> v, const std::string &  delim);
+
+
+
+	/**
+	 * Determines, based on the signatures, the modifiers for this function/
+	 * method.
+	 *
+	 */
+	virtual int removeModifiers(std::string & sig);
+
+	/**
+	 * Divides a function/method into return type, name, parameters.
+	 *
+	 * @param sig Signature to divide
+	 *
+	 */
+	virtual void divideSignature(const std::string &  sig);
+
 	/**
 	 * Creates a constructor signature from reflected data
 	 *
-	 * @param mClass Class that contains the constructor
+	 * @param nName Name of class that contains the constructor
 	 * @param construct Constructor to get signature of
-	 * @return Signature of the constructor (i.e. Foo(int, double)
 	 */
-	static std::string createConstructorSignature(const cpgf::GMetaClass *mClass,
-			const cpgf::GMetaConstructor *construct);
-	//	static std::string createConstructorSignature(std::string name,
-	//			int paramCount, std::string params...);
+	virtual void createConstructor(const std::string &  nName,
+			const cpgf::GMetaConstructor * construct);
+
 	/**
 	 * Creates a constructor signature from a name
 	 * and list of parameter types. The type is normalized
 	 * (somewhat) so that it is consistent with other signatures.
 	 *
-	 * @param name Name of the function/method
-	 * @param params List of parameter types
-	 * @return Signature of the constructor (i.e. Foo(int, double)
+	 * @param nName Name of the function/method
+	 * @param paramStrs List of parameter types
+	 * @param mods Modifiers for this method
 	 */
-	static std::string createConstructorSignature(std::string name,
-			const std::vector<std::string> & params);
-
-//	//operators
-//	/**
-//	 * Creates a operator signature from reflected data
-//	 *
-//	 * @param op operator to get signature of
-//	 * @return Signature of the operator (i.e. int operator+(int)
-//	 */
-//	static std::string createOperatorSignature(const cpgf::GMetaOperator *op);
-//	//	static std::string createOperatorSignature(std::string returnType, std::string name,
-//	//			int paramCount, std::string params...);
-//	/**
-//	 * Creates a operator signature from a return type and name
-//	 * and list of parameter types. The type is normalized
-//	 * (somewhat) so that it is consistent with other signatures.
-//	 *
-//	 * @param returnType Return type of the operator (i.e. const int)
-//	 * @param name Name of the operator
-//	 * @param params List of parameter types
-//	 * @return Signature of the function/method (i.e. int foo(int, double)
-//	 */
-//	static std::string createOperatorSignature(std::string returnType, std::string name,
-//			const std::vector<std::string> & params);
+	virtual void createConstructor(const std::string &  nName,
+			const std::vector<std::string> & paramStrs, int mods);
 
 
 	/**
-	 * Determines, based on the signatures, the modifiers for this function/
-	 * method.
-	 *
-	 * Attempts to find the following modifiers
-	 * 	const
-	 * 	static
-	 * 	extern
-	 * 	volatile
-	 * 	mutable
-	 * 	[template] - not supported
-	 *
-	 *
-	 * @param sig Signature of the function/method
-	 * @return modifiers for this function
-	 */
-	static int getFieldModifiers(std::string sig);
-
-	/**
-	 * Determines, based on the signatures, the modifiers for this function/
-	 * method.
-	 *
-	 * sig is returned without those modifiers
-	 *
-	 * Attempts to find the following modifiers
-	 * 	const
-	 * 	static
-	 * 	extern
-	 * 	volatile
-	 * 	mutable
-	 * 	[template] - not supported
-	 *
-	 * @param sig Signature of the function/method
-	 * @return modifiers for this function
-	 */
-	static int getAndRemoveFieldModifiers(std::string & sig);
-
-	/**
-	 * Divides a field/variable into type, name
-	 *
-	 * @param sig Signature of the field/variable
-	 * @return type, name, and modifiers
-	 */
-	static FieldInfo divideFieldSignature(std::string sig);
-
-
-//TODO change [] to *?
-	/**
-	 * Utility method that corrects the formatting of fields so they are in
-	 * a standard format and can be compared.
-	 *
-	 * @param field field signature
-	 * @return Corrected signature
-	 *
-	 * TODO move to a more robust comparison scheme using clang
-	 */
-	static std::string correctField(std::string field);
-
-	/**
-	 * Utility method that corrects the formatting of types so they are in
-	 * a standard format and can be compared.
-	 *
-	 * @param type type signature
-	 * @return Corrected signature
-	 *
-	 * TODO move to a more robust comparison scheme using clang
-	 */
-	static std::string correctType(std::string type);
-
-
-	/**
-	 * Divides an enum into a name and a list of enums and their values
-	 *
-	 * @param sig Signature of the enum
-	 * @return name and a list of enums and their values
-	 */
-	static EnumInfo divideEnumSignature(std::string sig);
-
-
-	/**
-	 * Utility method that corrects the formatting of enums so they are in
-	 * a standard format and can be compared.
-	 *
-	 * @param enumStr enum signature
-	 * @return Corrected signature
-	 *
-	 * TODO move to a more robust comparison scheme using clang
-	 */
-	static std::string correctEnum(std::string enumStr);
-
-
-	/**
-	 * Determines, based on the signatures, the modifiers for this function/
-	 * method.
-	 *
-	 * @param sig Signature of the function/method
-	 * @return modifiers for this function
-	 */
-	static int getFunctionModifiers(std::string sig);
-
-	/**
-	 * Determines, based on the signatures, the modifiers for this function/
-	 * method.
-	 *
-	 * sig is returned without those modifiers
-	 *
-	 * @param sig Signature of the function/method
-	 * @return modifiers for this function
-	 */
-	static int getAndRemoveFunctionModifiers(std::string & sig);
-
-	/**
-	 * Divides a function/method into return type, name, parameters.
-	 *
-	 *
-	 * @param sig Signature of the function/method
-	 * @return A vector with the return type, name, and parameters.
-	 */
-	static FunctionInfo divideFunctionSignature(std::string sig);
-
-	/**
-	 * Utility method that corrects the formatting of
-	 * functions/methods/operators/constructors so they are in
+	 * Creates functions/methods/operators/constructors so they are in
 	 * a standard format and can be compared.
 	 *
 	 *	Unlike with the fields, the const modifier is included in the signature
@@ -399,73 +417,187 @@ public:
 	 *		int foo() const
 	 *	are both valid, separate declarations and can coexist.
 	 *
-	 * @param signature functions/methods/operators/constructors signature
-	 * @return Corrected signature
+	 * @param sig functions/methods/operators/constructors signature
 	 *
 	 * TODO move to a more robust comparison scheme using clang
 	 */
-	static std::string correctSignature(std::string signature);
-
+	virtual void createMethod(const std::string &  sig);
 
 	/**
-	 * Determines, based on the signatures, the modifiers for this class.
+	 * Creates a function/method signature from a return type and name
+	 * and list of parameter types. The type is normalized
+	 * (somewhat) so that it is consistent with other signatures.
 	 *
-	 * Attempts to find the following modifiers
-	 * 	virutal (for base classes)
-	 * 	[template] - not supported
-	 *
-	 *
-	 * @param sig Signature of the class
-	 * @return modifiers for this class
+	 * @param rType Return type of the function/method (i.e. const int)
+	 * @param nName Name of the function/method
+	 * @param paramStrs List of parameter types
+	 * @param mods Modifiers for this method
 	 */
-	static int getClassModifiers(std::string sig);
+	virtual void createMethod(const std::string &  rType, const std::string &  nName,
+			const std::vector<std::string> & paramStrs, int mods);
 
+public:
 	/**
-	 * Determines, based on the signatures, the modifiers for this function/
-	 * method.
-	 *
-	 * sig is returned without those modifiers
-	 *
-	 * Attempts to find the following modifiers
-	 * 	virutal (for base classes)
-	 * 	[template] - not supported
-	 *
-	 * @param sig Signature of the class
-	 * @return modifiers for this class
+	 * Gets the return type
+	 * @return Return type as String
 	 */
-	static int getAndRemoveClassModifiers(std::string & sig);
+	virtual TypeSignature getReturnType() const { return returnType; }
 
 	/**
-	 * Divides a class into name, enclosing class, and modifiers.
-	 *
-	 *
-	 * @param sig Signature of the class
-	 * @return Info on the class
+	 * Gets all of the parameters as strings
+	 * @return list of parameters
 	 */
-	static ClassInfo divideClassSignature(std::string sig);
+	virtual std::vector<TypeSignature> getParameters() const { return params; }
+
+	//TODO add methods to add/remove/get/count the parameters?
+
+
+	//methods
+	/**
+	 * Creates a function/method signature from reflected data
+	 *
+	 * @param method Function/method to get signature of
+	 */
+	MethodSignature(const cpgf::GMetaMethod *method);
+
 
 	/**
-	 * Utility method that corrects the formatting of
-	 * (inner) classes so they are in
+	 * Creates a function/method signature from a return type and name
+	 * and list of parameter types. The type is normalized
+	 * (somewhat) so that it is consistent with other signatures.
+	 *
+	 * @param rType Return type of the function/method (i.e. const int)
+	 * @param nName Name of the function/method
+	 * @param paramStrs List of parameter types
+	 * @param mods Modifiers for this method
+	 */
+	MethodSignature(const std::string &  rType, const std::string &  nName,
+			const std::vector<std::string> & paramStrs, int mods) : returnType("") {
+		createMethod(rType, nName, paramStrs, mods);
+	}
+
+	/**
+	 * Creates a function/method signature from a return type and name
+	 * and list of parameter types. The type is normalized
+	 * (somewhat) so that it is consistent with other signatures.
+	 *
+	 * @param rType Return type of the function/method (i.e. const int)
+	 * @param nName Name of the function/method
+	 * @param paramStrs List of parameter types
+	 * @param mods Modifiers for this method
+	 */
+	MethodSignature(const char * rType, const char * nName,
+			const std::vector<std::string> & paramStrs, int mods) : returnType("") {
+		createMethod(rType, nName, paramStrs, mods);
+	}
+
+	//constructors
+	/**
+	 * Creates a constructor signature from reflected data
+	 *
+	 * @param mClass Class that contains the constructor
+	 * @param construct Constructor to get signature of
+	 */
+	MethodSignature(const cpgf::GMetaClass *mClass,
+			const cpgf::GMetaConstructor *construct);
+
+	/**
+	 * Creates a constructor signature from reflected data
+	 *
+	 * @param nName Name of class that contains the constructor
+	 * @param construct Constructor to get signature of
+	 */
+	MethodSignature(const std::string &  nName,
+			const cpgf::GMetaConstructor * construct);
+
+	/**
+	 * Creates a constructor signature from reflected data
+	 *
+	 * @param nName Name of class that contains the constructor
+	 * @param construct Constructor to get signature of
+	 */
+	MethodSignature(const char * nName,
+			const cpgf::GMetaConstructor * construct) : returnType("") {
+		createConstructor(nName, construct);
+	}
+
+	/**
+	 * Creates a constructor signature from a name
+	 * and list of parameter types. The type is normalized
+	 * (somewhat) so that it is consistent with other signatures.
+	 *
+	 * @param nName Name of the function/method
+	 * @param paramStrs List of parameter types
+	 * @param mods Modifiers for this method
+	 */
+	MethodSignature(const std::string &  nName,
+			const std::vector<std::string> & paramStrs, int mods) : returnType("") {
+		createConstructor(nName, paramStrs, mods);
+	}
+
+	/**
+	 * Creates a constructor signature from a name
+	 * and list of parameter types. The type is normalized
+	 * (somewhat) so that it is consistent with other signatures.
+	 *
+	 * @param nName Name of the function/method
+	 * @param paramStrs List of parameter types
+	 * @param mods Modifiers for this method
+	 */
+	MethodSignature(const char * nName,
+			const std::vector<std::string> & paramStrs, int mods) : returnType("") {
+		createConstructor(nName, paramStrs, mods);
+	}
+
+	/**
+	 * Creates functions/methods/operators/constructors so they are in
 	 * a standard format and can be compared.
 	 *
-	 * @param signature class signature
-	 * @return Corrected signature
+	 *	Unlike with the fields, the const modifier is included in the signature
+	 *	since
+	 *		int foo()
+	 *		int foo() const
+	 *	are both valid, separate declarations and can coexist.
+	 *
+	 * @param sig functions/methods/operators/constructors signature
 	 *
 	 * TODO move to a more robust comparison scheme using clang
 	 */
-	static std::string correctClassSignature(std::string signature);
+	MethodSignature(const std::string &  sig) : returnType("") {
+		createMethod(sig);
+	}
+
+	/**
+	 * Creates functions/methods/operators/constructors so they are in
+	 * a standard format and can be compared.
+	 *
+	 *	Unlike with the fields, the const modifier is included in the signature
+	 *	since
+	 *		int foo()
+	 *		int foo() const
+	 *	are both valid, separate declarations and can coexist.
+	 *
+	 * @param sig functions/methods/operators/constructors signature
+	 *
+	 * TODO move to a more robust comparison scheme using clang
+	 */
+	MethodSignature(const char * sig) : returnType("") {
+		createMethod(sig);
+	}
 
 
+	/**
+	 * Destroys this MethodSignature
+	 */
+	virtual ~MethodSignature() { }
 
 	/**
 	 * Determines if the operator is one of the postfix operators
 	 * (x++ or x--)
 	 *
-	 * @param sig signature to check
 	 * @return true if it is the signature of an postfix operator
 	 */
-	static bool isPostFixOperator(std::string sig);
+	virtual bool isPostFixOperator() const;
 
 	/**
 	 * Determines if this signature matches the pattern of names for auto-
@@ -478,62 +610,17 @@ public:
 	 * 	 .*\bopErAToRWrapper_.*_array_.*
 	 * to see if it is valid.
 	 *
-	 * @param sig signature to check
 	 * @return true if it is the signature of an array setter method
 	 */
-	static bool isArraySetterSignature(std::string sig);
+	virtual bool isArraySetterSignature() const;
 
 	/**
 	 * Determines if this signature matches the operator[] method and that it
 	 * does not return a const result.
 	 *
-	 * @param sig signature to check
 	 * @return true if it is the signature of an array setter method
 	 */
-	static bool isSettableArrayOperator(std::string sig);
-
-	/**
-	 * Utility method that creates a method signature for the auxiliary function
-	 * used to simulate setting a value with the [] operator
-	 * (i.e. x[2] = 4)
-	 *
-	 * The result returned has the form:
-	 * 	opErAToRWrapper_<class name>_<return type>_array_<params>
-	 * 	where spaces are replaced with _, & is replaced with ref, and
-	 * 	* is replaced with ptr
-	 *
-	 * @param className Name of the class
-	 * @param arrayOpSignature signature of the operator being called
-	 * 	(i.e. string & operator[](int) )
-	 * @return signature for the array setter function
-	 */
-	static std::string createArraySetterSignature(std::string className,
-			std::string arrayOpSignature);
-
-
-	/**
-	 * Takes a function/method signature and returns the return type
-	 *
-	 * @param signature signature of the function/method
-	 * @return the return type of the function/method as a string
-	 */
-	static std::string getReturnType(std::string signature);
-
-	/**
-	 * Given a string representation of a type, returns if it is a pointer.
-	 *
-	 * @param type Type signature
-	 * @return true if it is a pointer
-	 */
-	static bool isPointerType(std::string type);
-
-	/**
-	 * Given a string representation of a type, returns if it is a reference.
-	 *
-	 * @param type Type signature
-	 * @return true if it is a reference
-	 */
-	static bool isReferenceType(std::string type);
+	virtual bool isSettableArrayOperator() const;
 
 
 	/**
@@ -546,11 +633,124 @@ public:
 	 * 	 .*\bopErAToRWrapper_.*
 	 * to see if it is valid.
 	 *
-	 * @param sig signature to check
 	 * @return true if it is the signature of an array setter method
 	 */
-	static bool isCopyFunctionSignature(std::string sig);
+	virtual bool isCopyFunctionSignature() const;
 
+
+	/**
+	 * Determines if the name of this method refers to a destructor
+	 *
+	 * @return true if it is a destructor
+	 */
+	virtual bool isDestructor() const;
+
+
+
+	/**
+	 * Utility method that creates a method signature for the auxiliary function
+	 * used to simulate setting a value with the [] operator
+	 * (i.e. x[2] = 4)
+	 *
+	 * The result returned has the form:
+	 * 	opErAToRWrapper_<class name>_<return type>_array_<params>
+	 * 	where spaces are replaced with _, & is replaced with ref, and
+	 * 	* is replaced with ptr
+	 *
+	 * @param className Name of the class
+	 * @return signature for the array setter function or "" if this method
+	 * is an [] operator signature
+	 */
+	MethodSignature createArraySetterSignature(const std::string &  className) const;
+};
+
+
+
+/**
+ * @class MethodSignature
+ * Represents a class
+ *
+ * @author scturner
+ * @version 6/23/2014
+ */
+class ClassSignature : public Signature {
+protected:
+	/**
+	 * Name of the enclosing class for this class
+	 */
+	std::string enclosingClass;
+
+	/**
+	 * Determines, based on the signatures, the modifiers for this function/
+	 * method.
+	 *
+	 * sig is returned without those modifiers
+	 *
+	 * Attempts to find the following modifiers
+	 * 	virutal (for base classes)
+	 * 	[template] - not supported
+	 *
+	 * @param sig Signature of the function/method
+	 * @return modifiers for this function
+	 */
+	int removeModifiers(std::string sig);
+
+	/**
+	 * Divides a class into name, enclosing class, and modifiers.
+	 *
+	 * @param sig Signature of the class
+	 */
+	void divideSignature(const std::string &  sig);
+
+	/**
+	 * Corrects the formatting of
+	 * (inner) classes so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param sig class signature
+	 *
+	 * TODO move to a more robust comparison scheme using clang
+	 */
+	virtual void createClass (const std::string & sig);
+
+public:
+	/**
+	 * Gets the name of the enclosingClass
+	 */
+	std::string getEnclosingClass() const { return enclosingClass; }
+
+	/**
+	 * Corrects the formatting of
+	 * (inner) classes so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param sig class signature
+	 *
+	 * TODO move to a more robust comparison scheme using clang
+	 */
+	ClassSignature(const std::string & sig) { createClass(sig); }
+
+	/**
+	 * Corrects the formatting of
+	 * (inner) classes so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param sig class signature
+	 *
+	 * TODO move to a more robust comparison scheme using clang
+	 */
+	ClassSignature(const char * sig) { createClass(sig); }
+
+	/**
+	 * Corrects the formatting of
+	 * (inner) classes so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param parent Parent of the reflectedClass
+	 * @param cClass reflected class
+	 *
+	 */
+	ClassSignature(const cpgf::GMetaClass * cClass);
 
 	/**
 	 * Utility method that creates a method signature for the auxiliary function
@@ -561,37 +761,104 @@ public:
 	 * The result returned has the form:
 	 * 	cOpYwRaPpEr_<class name>
 	 *
-	 * @param className Name of the class
 	 * @return signature for the copy function
 	 */
-	static std::string createCopyFunctionSignature(std::string className);
+	MethodSignature createCopyFunctionSignature() const;
+};
+
+
+/**
+ * @class EnumSignature
+ * Represents an enum with its name and values
+ *
+ * @author scturner
+ * @version 6/23/2014
+ */
+class EnumSignature : public Signature {
+protected:
+	/**
+	 * Mapping of each enum name to its value
+	 */
+	std::map<std::string, int> names;
+
+	/**
+	 * Mapping of each value to its name
+	 */
+	std::map<int, std::string> values;
 
 
 	/**
-	 * Determines if the name of this method refers to a destructor
+	 * Divides an enum into a name and a list of enums and their values
 	 *
-	 * @param name Name of the method
-	 * @return true if it is a destructor
+	 * @param sig Signature of the class
 	 */
-	static bool isDestructor(std::string name);
+	void divideSignature(const std::string &  sig);
 
-//	/**
-//	 * Gets the name from a non-reflected enumeration which has the form
-//	 *  <name> {<enum> [= <value>], ...}
-//	 * @param signature Signature of the enum
-//	 * @return name of the enum
-//	 */
-//	static std::string getEnumName(std::string signature);
-//
-//	/**
-//	 * Gets the values from a non-reflected enumeration which has the form
-//	 *  <name> {<enum> [= <value>], ...}
-//	 * @param signature Signature of the enum
-//	 * @return map with the name of the value and the value
-//	 */
-//	static std::map<std::string, int> getEnumValues(std::string signature);
+	/**
+	 * Corrects the formatting of enums so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param enumStr enum signature
+	 *
+	 * TODO move to a more robust comparison scheme using clang
+	 */
+	virtual void createEnum(const std::string &  enumStr);
 
+public:
+	/**
+	 * Gets the mapping from enum names to their values
+	 * @return Enum names and their values
+	 */
+	virtual std::map<std::string, int> getEnumNamesToValues() const {
+		return names;
+	}
+
+	/**
+	 * Gets the mapping from enum values to their names
+	 * @return Enum values and their names
+	 */
+	virtual std::map<int, std::string> getEnumValuesToNames() const {
+		return values;
+	}
+
+	/**
+	 * Corrects the formatting of enums so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param enumStr enum signature
+	 *
+	 * TODO move to a more robust comparison scheme using clang
+	 */
+	EnumSignature(const std::string &  enumStr) { createEnum(enumStr); }
+
+	/**
+	 * Corrects the formatting of enums so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param enumStr enum signature
+	 *
+	 * TODO move to a more robust comparison scheme using clang
+	 */
+	EnumSignature(const char * enumStr) { createEnum(enumStr); }
+
+
+	/**
+	 * Corrects the formatting of enums so they are in
+	 * a standard format and can be compared.
+	 *
+	 * @param eEnum reflected enum
+	 *
+	 */
+	EnumSignature(const cpgf::GMetaEnum * eEnum);
+
+	/**
+	 * Casts the Signature to a string as needed
+	 */
+	virtual operator std::string() const { return name; }
 };
+
+
+
 
 }
 #endif /* RECFLECTIONUTIL_H_ */

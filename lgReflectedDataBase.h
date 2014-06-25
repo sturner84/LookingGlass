@@ -63,7 +63,7 @@ protected:
 	 * @return true if it is one of the auto-generated support methods. See
 	 * isArraySetterSignature and isCopyFunctionSignature in ReflectionUtil
 	 */
-	virtual	bool isNonReflectedMethod(std::string methodName);
+	virtual	bool isNonReflectedMethod(MethodSignature methodName);
 
 	/**
 	 * Loads data from the class (methods, fields, operators and enums).
@@ -105,7 +105,7 @@ protected:
 	 */
 	template <class T>
 	T getItem(const std::map<std::string, T> &dataMap,
-			const std::string &name, int modifiers, bool allowMoreMods) const;
+			const Signature & name, int modifiers, bool allowMoreMods) const;
 
 	/**
 	 * Gets a list of all of the names from one of the maps
@@ -181,7 +181,7 @@ protected:
 	 */
 	template <class T>
 	std::vector<T> getClosest(
-			const std::map<std::string, T> &vMap, std::string name,
+			const std::map<std::string, T> &vMap, Signature name,
 			VisibilityAccessType vis, bool inherited, int count) const;
 
 	/**
@@ -197,7 +197,7 @@ protected:
 	 */
 	template <class T>
 	std::string getClosestString(
-			const std::map<std::string, T> &vMap, std::string name,
+			const std::map<std::string, T> &vMap, Signature name,
 			VisibilityAccessType vis, bool inherited, int count) const;
 
 
@@ -213,7 +213,7 @@ protected:
 	 *
 	 */
 	template <class T>
-	bool exists(const std::map<std::string, T> &vMap, std::string name,
+	bool exists(const std::map<std::string, T> &vMap, Signature name,
 			VisibilityAccessType vis, bool inherited, int modifiers,
 			bool allowMoreMods) const;
 
@@ -249,7 +249,7 @@ protected:
 	 * 	from those listed.  (defaults to true)
 	 *  @return true is that function exists
 	 */
-	virtual bool doesMethodExist(std::string functionSignature,
+	virtual bool doesMethodExist(MethodSignature functionSignature,
 			VisibilityAccessType vis = Public_Access, bool inherited = false,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
@@ -281,7 +281,7 @@ protected:
 	 *
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedMethod * getMethod(std::string signature,
+	virtual const ReflectedMethod * getMethod(MethodSignature signature,
 			int modifiers, bool allowMoreMods) const;
 
 
@@ -299,7 +299,7 @@ protected:
 	 *  	this is false)
 	 *  @return true is that function exists
 	 */
-	virtual bool doesNonReflectedMethodExist(std::string functionSignature,
+	virtual bool doesNonReflectedMethodExist(MethodSignature functionSignature,
 			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
 
 
@@ -330,7 +330,7 @@ protected:
 	 *
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedMethod * getNonReflectedMethod(std::string signature) const;
+	virtual const ReflectedMethod * getNonReflectedMethod(MethodSignature signature) const;
 
 
 
@@ -362,7 +362,7 @@ protected:
 	 * 	from those listed.  (defaults to true)
 	 * @return true if the field exists
 	 */
-	virtual bool doesFieldExist(std::string signature, VisibilityAccessType vis = Public_Access,
+	virtual bool doesFieldExist(FieldSignature signature, VisibilityAccessType vis = Public_Access,
 			bool inherited = false, int modifiers = ALLOW_ALL_MODIFIERS,
 			bool allowMoreMods = true) const;
 
@@ -442,7 +442,7 @@ protected:
 	 *
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedField * getField(std::string signature,
+	virtual const ReflectedField * getField(FieldSignature signature,
 			int modifiers, bool allowMoreMods) const;
 
 
@@ -571,7 +571,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 *  @return true is that enum exists
 	 */
-	virtual bool doesEnumExist(std::string name, VisibilityAccessType vis = Public_Access,
+	virtual bool doesEnumExist(EnumSignature name, VisibilityAccessType vis = Public_Access,
 			bool inherited = false, int modifiers = ALLOW_ALL_MODIFIERS,
 			bool allowMoreMods = true) const;
 
@@ -620,7 +620,7 @@ public:
 	 *
 	 * @return an enum object or NULL
 	 */
-	virtual const ReflectedEnum * getEnum(std::string signature,
+	virtual const ReflectedEnum * getEnum(EnumSignature signature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -665,7 +665,7 @@ public:
 	 * @return List of enums that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedEnum *> getClosestEnums(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			EnumSignature name, VisibilityAccessType vis = Public_Access,
 			bool inherited = false, int count = MAX_SIMILAR);
 
 	/**
@@ -681,7 +681,7 @@ public:
 	 *  to the name given
 	 */
 	virtual std::string getClosestEnumsString(
-			std::string name, VisibilityAccessType vis = Public_Access,
+			EnumSignature name, VisibilityAccessType vis = Public_Access,
 			bool inherited = false, int count = MAX_SIMILAR);
 
 };
@@ -690,11 +690,11 @@ public:
 //use the modifiers to add to the parameter
 template <class T>
 T ReflectedDataBase::getItem(const std::map<std::string, T> & dataMap,
-		const std::string & name, int modifiers, bool allowMoreMods) const
+		const Signature & name, int modifiers, bool allowMoreMods) const
 {
-	if (dataMap.count(name) == 1)
+	if (dataMap.count(name.getSignature()) == 1)
 	{
-		T item = dataMap.find(name)->second;
+		T item = dataMap.find(name.getSignature())->second;
 		 //-1 = ignore modifiers
 		if (modifiers == ALLOW_ALL_MODIFIERS || modifiers == item->getModifiers()
 				|| (allowMoreMods && (modifiers & item->getModifiers()) != 0)) {
@@ -788,7 +788,7 @@ std::vector<T> ReflectedDataBase::getItems(
 	for (std::vector<std::string>::const_iterator it = names.begin();
 			it != names.end(); it++)
 	{
-		T item = getItem(vMap, (*it), modifiers, allowMoreMods);
+		T item = getItem(vMap, Signature(*it), modifiers, allowMoreMods);
 		//get either the objects declared in the class or if
 		// inherited is true, everything
 		if (item && (vis & item->getVisibility()) &&
@@ -804,7 +804,7 @@ std::vector<T> ReflectedDataBase::getItems(
 
 template <class T>
 std::vector<T> ReflectedDataBase::getClosest(
-		const std::map<std::string, T> &vMap, std::string name,
+		const std::map<std::string, T> &vMap, Signature name,
 		VisibilityAccessType vis, bool inherited, int count) const
 {
 	std::vector<std::string> names = StringDistance::getNClosest(name,
@@ -815,7 +815,7 @@ std::vector<T> ReflectedDataBase::getClosest(
 
 template <class T>
 std::string ReflectedDataBase::getClosestString(
-		const std::map<std::string, T> &vMap, std::string name,
+		const std::map<std::string, T> &vMap, Signature name,
 		VisibilityAccessType vis, bool inherited, int count) const
 {
 	return StringDistance::getNClosestAsString(name,
@@ -825,7 +825,7 @@ std::string ReflectedDataBase::getClosestString(
 
 template <class T>
 bool ReflectedDataBase::exists(const std::map<std::string, T> &vMap,
-		std::string name, VisibilityAccessType vis, bool inherited,
+		Signature name, VisibilityAccessType vis, bool inherited,
 		int modifiers, bool allowMoreMods) const
 {
 	T m = getItem(vMap, name, modifiers, allowMoreMods);

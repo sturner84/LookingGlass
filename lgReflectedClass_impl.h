@@ -31,7 +31,7 @@
  */
 #define REF_INVOKE(N, unused) \
 	template <typename ReturnType> \
-	bool cpptesting::ReflectedObject::invokeReturn(std::string methodSignature, \
+	bool cpptesting::ReflectedObject::invokeReturn(MethodSignature methodSignature, \
 		ReturnType & returnVal GPP_COMMA_IF(N) \
 		GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 { \

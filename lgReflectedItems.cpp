@@ -165,16 +165,15 @@ ReflectedMethod::ReflectedMethod(const cpgf::GMetaMethod * m,
 			//but they aren't declared static so this clear it
 			mods &= ~cpgf::metaModifierStatic;
 		}
-	signature = ReflectionUtil::createFunctionSignature(method);
+	signature = MethodSignature(method).getSignature();
 }
 
 
-ReflectedMethod::ReflectedMethod(std::string sig, bool inherit, bool isGlobal,
+ReflectedMethod::ReflectedMethod(MethodSignature sig, bool inherit, bool isGlobal,
 		VisibilityType vis, int modifiers)
 	: ReflectedItem(sig, sig, inherit, isGlobal, vis, Method, modifiers)
 {
-	FunctionInfo info = ReflectionUtil::divideFunctionSignature(sig);
-	name = info.name;
+	name = sig.getName();
 	method = NULL;
 }
 
@@ -197,17 +196,16 @@ ReflectedConstructor::ReflectedConstructor(const cpgf::GMetaConstructor * c,
 				false, Public, Constructor, c->getModifiers())
 {
 	constructor = c;
-	signature = ReflectionUtil::createConstructorSignature(
-			static_cast<const cpgf::GMetaClass *>(c->getOwnerItem()), c);
+	signature = MethodSignature(static_cast<const cpgf::GMetaClass *>(
+			c->getOwnerItem()), c).getSignature();
 }
 
 
-ReflectedConstructor::ReflectedConstructor(std::string sig, bool inherit,
+ReflectedConstructor::ReflectedConstructor(MethodSignature sig, bool inherit,
 		VisibilityType vis, int modifiers)
 	: ReflectedItem(sig, sig, inherit, false, vis, Constructor, modifiers)
 {
-	FunctionInfo info = ReflectionUtil::divideFunctionSignature(sig);
-	name = info.name;
+	name = sig.getName();
 	constructor = NULL;
 }
 
@@ -237,17 +235,16 @@ ReflectedField::ReflectedField(const cpgf::GMetaField * f, bool inherit,
 
 		mods &= ~cpgf::metaModifierStatic;
 	}
-	signature = ReflectionUtil::createFieldSignature(field);
+	signature = FieldSignature(field).getSignature();
 }
 
 
-ReflectedField::ReflectedField(std::string sig, bool inherit,
+ReflectedField::ReflectedField(FieldSignature sig, bool inherit,
 		bool isGlobal, VisibilityType vis, int modifiers)
 	: ReflectedItem(sig, "", inherit, isGlobal, vis, Field, modifiers)
 {
 	field = NULL;
-	FieldInfo info = ReflectionUtil::divideFieldSignature(sig);
-	name = info.name;
+	name = sig.getName();
 }
 
 
@@ -292,16 +289,16 @@ bool ReflectedField::isAccessible() const
 
 
 
-void ReflectedEnum::loadData(const cpgf::GMetaEnum* genum)
-{
-	for (size_t i = 0; i < genum->getCount(); i++) {
-		enumByNames[genum->getKey(i)]
-		            = cpgf::fromVariant<int>(genum->getValue(i));
-		enumByValues[cpgf::fromVariant<int>(genum->getValue(i))]
-		             = genum->getKey(i);
-	}
-
-}
+//void ReflectedEnum::loadData(const cpgf::GMetaEnum* genum)
+//{
+//	for (size_t i = 0; i < genum->getCount(); i++) {
+//		enumByNames[genum->getKey(i)]
+//		            = cpgf::fromVariant<int>(genum->getValue(i));
+//		enumByValues[cpgf::fromVariant<int>(genum->getValue(i))]
+//		             = genum->getKey(i);
+//	}
+//
+//}
 
 
 
@@ -315,28 +312,22 @@ ReflectedEnum::ReflectedEnum(const cpgf::GMetaEnum* e, bool inherit,
 				e->getModifiers() & ~cpgf::metaModifierStatic)
 {
 	mEnum = e;
-	loadData(e);
-	//TODO get signature
+	EnumSignature sig(e);
+//	loadData(e);
+	enumByNames = sig.getEnumNamesToValues();
+	enumByValues = sig.getEnumValuesToNames();
+	signature = sig.getSignature();
 }
 
-ReflectedEnum::ReflectedEnum(std::string sig, bool inherit,
+ReflectedEnum::ReflectedEnum(EnumSignature sig, bool inherit,
 		bool isGlobal, VisibilityType vis, int modifiers)
 	: ReflectedItem(sig, sig, inherit, isGlobal, vis, Enum, modifiers)
 {
 	mEnum = NULL;
-	EnumInfo info = ReflectionUtil::divideEnumSignature(sig);
 
-	name = info.name;
-	enumByNames = info.names;
-	enumByValues = info.values;
-//	name = ReflectionUtil::getEnumName(nName);
-//	enumByNames = ReflectionUtil::getEnumValues(nName);
-//
-//	for (std::map<std::string, int>::iterator i = enumByNames.begin();
-//			i != enumByNames.end(); i++) {
-//		enumByValues[i->second] = i->first;
-//	}
-
+	name = sig.getName();
+	enumByNames = sig.getEnumNamesToValues();
+	enumByValues = sig.getEnumValuesToNames();
 }
 
 
@@ -753,6 +744,75 @@ std::vector<ReflectedNamespacePtr> ReflectedNamespace::getAllNamespaces() {
  */
 size_t ReflectedNamespace::getNamespaceCount() {
 	return getAllNamespaces().size();
+}
+
+
+
+/**
+ * Sets the options for this filter.
+ *
+ * @param vis Visibility required for this item
+ * @param inherit True if inherited items should be included, false if not.
+ * @param reqMods Modifiers that are required to be present. These can be
+ * ORed together
+ *	List of modifiers from cpgf/gmetacommon.h that apply here:
+ * 		metaModifierNone
+ * 		metaModifierStatic
+ * 		metaModifierVirtual
+ * 		metaModifierPureVirtual
+ * 		metaModifierTemplate
+ * 		metaModifierConst
+ * 		metaModifierVolatile
+ * 		metaModifierInline
+ * 		metaModifierExplicit
+ * 		metaModifierExtern
+ * 		metaModifierMutable
+ * @param exMods Modifiers that cannot be present. The required modifiers
+ * take precedence over the excluded ones. See reqMods for a list of
+ * modifiers. Use cpgf::metaModifierExcludeAll to disallow everything
+ * but those modifiers in reqMods.
+ *
+ */
+void ItemFilter::setOptions(VisibilityAccessType vis, bool inherit, int reqMods,
+		int exMods) {
+	visibility = vis;
+	allowInherited = inherit;
+	reqModifiers = reqMods;
+	//get rid of overlapping modifiers
+	excludedModifiers = exMods & ~reqModifiers;
+}
+
+
+/**
+ * Determines if this item is allowed with this filter.
+ *
+ * This looks at the visibility of the item, if it is inherited or not,
+ * and its modifiers to determine if this item should be included.
+ *
+ * With the modifiers, there are required and excluded modifiers.  Required
+ * modifiers take precedence over excluded modifiers.  So, if both include
+ * the metaModifierConst value, items that are declared const will be
+ * included.
+ *
+ * @param item Reflected item to test
+ * @param addMods Additional required modifiers (gernerally from a Signature)
+ *
+ * @return true if this item meets the requirements of this filter
+ */
+bool ItemFilter::isAllowed(const ReflectedItem * item, int addMods) {
+	int tempReqMods = reqModifiers | addMods;
+	VisibilityType itemVis = item->getVisibility();
+	bool itemInherited = item->isInherited();
+	int itemMods = item->getModifiers();
+
+	return (visibility & itemVis) //check visibility
+			//either show inherited or item shouldn't be inherited
+			&& (allowInherited || !itemInherited)
+			//either required mods = 0 which means everything is allowed
+			//or itemMods AND tempReqMods should be tempReqMods
+			&& (!tempReqMods || (tempReqMods & itemMods) == tempReqMods)
+			//disallow any other modifier
+			&& !(itemMods & excludedModifiers);
 }
 
 }

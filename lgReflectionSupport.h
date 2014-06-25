@@ -132,7 +132,7 @@ private:
 	 * @return Method pointer for the method or NULL
 	 */
 	static const ReflectedMethod *  getFunctionObject(const ReflectedObject * object,
-			std::string nSignature, bool allowNonReflected);
+			MethodSignature nSignature, bool allowNonReflected);
 
 	/**
 	 * Gets the base reflected object that will be used in the method cal
@@ -152,7 +152,7 @@ private:
 #define REF_INVOKE(N, unused) \
 		template <typename ReturnType> \
 		static INVOKE_RESULT invokeInternal(const ReflectedObject * object, \
-				std::string signature, \
+				MethodSignature signature, \
 				bool useReturn, ReturnType & returnVal, bool allowNonReflected \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
@@ -164,7 +164,7 @@ private:
 
 template <typename ReturnType>
 	static INVOKE_RESULT invokeArraySetter(const ReflectedObject * object,
-			std::string signature,
+			MethodSignature signature,
 			bool useReturn, ReturnType & returnVal, const cpgf::GVariant & p0,
 			const cpgf::GVariant & p1);
 
@@ -202,7 +202,7 @@ public:
 #define REF_INVOKE(N, unused) \
 		template <typename ReturnType> \
 		static bool invokeReturn(ReflectedObjectPtr object, \
-				std::string methodSignature, \
+				MethodSignature methodSignature, \
 				ReturnType & returnVal GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
@@ -228,7 +228,7 @@ public:
 	 */
 #define REF_INVOKE(N, unused) \
 		static bool invoke(ReflectedObjectPtr object, \
-				std::string functionSignature \
+				MethodSignature functionSignature \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
@@ -258,7 +258,7 @@ public:
 	 */
 #define REF_INVOKE(N, unused) \
 		template <typename ReturnType> \
-		static bool invokeReturn(std::string functionSignature, \
+		static bool invokeReturn(MethodSignature functionSignature, \
 				ReturnType & returnVal GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
@@ -282,7 +282,7 @@ public:
 	 * 		to the ReturnType, then this is false.
 	 */
 #define REF_INVOKE(N, unused) \
-		static bool invoke(std::string functionSignature \
+		static bool invoke(MethodSignature functionSignature \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p));
 
@@ -551,7 +551,7 @@ public:
 	 *
 	 */
 	template <typename ValueType>
-	static bool getGlobalVariable(ValueType& val, std::string signature,
+	static bool getGlobalVariable(ValueType& val, FieldSignature signature,
 			int modifiers = ReflectedData::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 
@@ -582,7 +582,7 @@ public:
 	 * @return True if the variable could be set.
 	 */
 	template <typename ValueType>
-	static bool setGlobalVariable(const ValueType& val, std::string signature,
+	static bool setGlobalVariable(const ValueType& val, FieldSignature signature,
 			int modifiers = ReflectedData::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
 
 //	/**
@@ -610,7 +610,7 @@ public:
 #define REF_INVOKE(N, unused) \
 		template <typename ReturnType>  \
 		bool LookingGlass::invokeReturn(ReflectedObjectPtr object, \
-				std::string functionSignature, \
+				MethodSignature functionSignature, \
 				ReturnType & returnVal GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 				{ \
@@ -626,7 +626,7 @@ GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 
 #define REF_INVOKE(N, unused) \
 		template <typename ReturnType>  \
-		bool LookingGlass::invokeReturn(std::string functionSignature, \
+		bool LookingGlass::invokeReturn(MethodSignature functionSignature, \
 				ReturnType & returnVal GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 				{ \
@@ -679,7 +679,7 @@ bool LookingGlass::invokeWithReturn(std::string functionSignature, \
 
 
 template <typename ValueType>
-bool LookingGlass::getGlobalVariable(ValueType& val, std::string signature,
+bool LookingGlass::getGlobalVariable(ValueType& val, FieldSignature signature,
 		int modifiers, bool allowMoreMods)
 {
 	ReflectedData* data = ReflectedData::getDataInstance();
@@ -699,7 +699,7 @@ bool LookingGlass::getGlobalVariable(ValueType& val, std::string signature,
 }
 
 template <typename ValueType>
-bool LookingGlass::setGlobalVariable(const ValueType& val, std::string signature,
+bool LookingGlass::setGlobalVariable(const ValueType& val, FieldSignature signature,
 		int modifiers, bool allowMoreMods)
 {
 	ReflectedData* data = ReflectedData::getDataInstance();
@@ -725,30 +725,6 @@ bool LookingGlass::setGlobalVariable(const ValueType& val, std::string signature
 	return success;
 }
 
-//
-//template <typename ValueType>
-//bool LookingGlass::setGlobalVariable(ValueType val, std::string signature)
-//{
-//
-//	ReflectedData* data = ReflectedData::getDataInstance();
-//	bool success = false;
-//
-//	if (data->doesVariableExist(signature))
-//	{
-//		const cpgf::GMetaField* field = data->getGlobalVariable(signature);
-//		try
-//		{
-//			field->set(NULL, val);
-//			success = true;
-//		}
-//		catch (...)
-//		{
-//			//failed, probably wrong data type
-//		}
-//	}
-//
-//	return success;
-//}
 
 
 
@@ -770,7 +746,7 @@ void LookingGlass::getReturnValue(ReturnType & rValue, cpgf::GVariant result) {
 //code to insert into invokeInternal where N = 0
 //fixes calls to postfix ++ and --
 #define POST_FIX_OP_CODE \
-	if (ReflectionUtil::isPostFixOperator(nSignature)) { \
+	if (nSignature.isPostFixOperator()) { \
 		return invokeInternal(object, nSignature, useReturn, returnVal, false, \
 				0); \
 	}
@@ -788,7 +764,7 @@ void LookingGlass::getReturnValue(ReturnType & rValue, cpgf::GVariant result) {
 //fixes calls to operator[] where the [] is an lvalue
 #define ARRAY_SETTER_CODE \
 	if (object != NULL \
-		&& ReflectionUtil::isSettableArrayOperator(nSignature)) { \
+		&& nSignature.isSettableArrayOperator()) { \
 		return invokeArraySetter(object, nSignature, useReturn, returnVal, \
 						p0, p1); \
 	}
@@ -802,7 +778,7 @@ void LookingGlass::getReturnValue(ReturnType & rValue, cpgf::GVariant result) {
 #define REF_INVOKE(N, unused) \
 template <typename ReturnType>  \
 LookingGlass::INVOKE_RESULT LookingGlass::invokeInternal( \
-		const ReflectedObject * object, std::string nSignature, \
+		const ReflectedObject * object, MethodSignature nSignature, \
 		bool useReturn, ReturnType & returnVal, bool allowNonReflected \
 		GPP_COMMA_IF(N) \
 		GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) { \
@@ -850,159 +826,20 @@ GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
 
 
 template <typename ReturnType>
-	LookingGlass::INVOKE_RESULT LookingGlass::invokeArraySetter(
-			const ReflectedObject * object,
-			std::string signature,
-			bool useReturn, ReturnType & returnVal, const cpgf::GVariant & p0,
-			const cpgf::GVariant & p1) {
+LookingGlass::INVOKE_RESULT LookingGlass::invokeArraySetter(
+		const ReflectedObject * object,
+		MethodSignature signature,
+		bool useReturn, ReturnType & returnVal, const cpgf::GVariant & p0,
+		const cpgf::GVariant & p1) {
 
-		std::string arraySetterSig = ReflectionUtil::createArraySetterSignature(
-				object->getClass()->getName(), signature);
+	std::string arraySetterSig = signature.createArraySetterSignature(
+			object->getClass()->getName());
 
-		return invokeInternal(object, arraySetterSig, useReturn, returnVal,
-				true, p0, p1);
+	return invokeInternal(object, arraySetterSig, useReturn, returnVal,
+			true, p0, p1);
 }
 
 
-//template <typename ReturnType>
-//LookingGlass::INVOKE_RESULT LookingGlass::invokeInternalTest(
-//		const ReflectedObject * object, std::string signature,
-//		bool useReturn, ReturnType & returnVal)
-//{
-//	LookingGlass::INVOKE_RESULT success = INVOKE_SUCCESS;
-//	const ReflectedMethod * func = NULL;
-//	bool exists = false;
-//	void * objectForCall = NULL;
-//
-//	ReflectedData* data = ReflectedData::getDataInstance();
-//
-//	if (object == NULL) /* this is a function, then */
-//	{
-//		if (data->doesFunctionExist(signature))
-//		{
-//			func = data->getFunction(signature);
-//			exists = true;
-//		}
-//		else
-//		{
-//			success = INVOKE_BAD_METHOD;
-//		}
-//	}
-//	else
-//	{
-//		if (object->getClass() != NULL)
-//		{
-//			const ReflectedClass* c = object->getClass();
-//			if (c->doesMethodExist(signature, true))
-//			{
-//				func = c->getMethod(signature);
-//				objectForCall = object->getObject();
-//				exists = true;
-//			}
-//			else
-//			{
-//				success = INVOKE_BAD_METHOD;
-//			}
-//		}
-//		else
-//		{
-//			success = INVOKE_BAD_CLASS;
-//		}
-//	}
-//
-//	if (exists && func->isAccessible())
-//	{
-//		cpgf::GVariant result = func->getMethod()->invoke(objectForCall);
-//
-//		if (useReturn)
-//		{
-//			if (cpgf::canFromVariant<ReturnType>(result))
-//			{
-//				returnVal = cpgf::fromVariant<ReturnType>(result);
-//			}
-//			else
-//			{
-//				success = INVOKE_BAD_RETURN;
-//			}
-//		}
-//	}
-//	else
-//	{
-//		if (func && !func->isAccessible())
-//		{
-//			success = INVOKE_NOT_ACCESSIBLE;
-//		}
-//	}
-//
-//	return success;
-//}
-//
-
-//template <typename ReturnType>
-//LookingGlass::INVOKE_RESULT LookingGlass::invokeInternalTest(
-//		const ReflectedObject * object, std::string signature,
-//		bool useReturn, ReturnType & returnVal, const cpgf::GVariant & p)
-//{
-//	LookingGlass::INVOKE_RESULT success = INVOKE_SUCCESS;
-//	const cpgf::GMetaMethod* func = NULL;
-//	bool exists = false;
-//	void * objectForCall = NULL;
-//
-//	ReflectedData* data = ReflectedData::getDataInstance();
-//
-//	if (object == NULL) /* this is a function, then */
-//	{
-//		if (data->doesFunctionExist(signature))
-//		{
-//			func = data->getFunction(signature);
-//			exists = true;
-//		}
-//		else
-//		{
-//			success = INVOKE_BAD_METHOD;
-//		}
-//	}
-//	else
-//	{
-//		if (object->getClass() != NULL)
-//		{
-//			const ReflectedClass* c = object->getClass();
-//			if (c->doesMethodExist(signature))
-//			{
-//				func = c->getMethod(signature);
-//				objectForCall = object->getObject();
-//				exists = true;
-//			}
-//			else
-//			{
-//				success = INVOKE_BAD_METHOD;
-//			}
-//		}
-//		else
-//		{
-//			success = INVOKE_BAD_CLASS;
-//		}
-//	}
-//
-//	if (exists)
-//	{
-//		cpgf::GVariant result = func->invoke(objectForCall, p);
-//
-//		if (useReturn)
-//		{
-//			if (cpgf::canFromVariant<ReturnType>(result))
-//			{
-//				returnVal = cpgf::fromVariant<ReturnType>(result);
-//			}
-//			else
-//			{
-//				success = INVOKE_BAD_RETURN;
-//			}
-//		}
-//	}
-//
-//	return success;
-//}
 
 
 

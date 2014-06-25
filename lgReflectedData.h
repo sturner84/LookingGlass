@@ -55,7 +55,7 @@ protected:
 	 * @param signature Signature of the class
 	 * @return The reflected class or NULL if it is not found
 	 */
-	virtual ReflectedClass * findClass(std::string signature) const;
+	virtual ReflectedClass * findClass(ClassSignature signature) const;
 
 public:
 
@@ -99,7 +99,7 @@ public:
 
 	 *  @return true is that function exists
 	 */
-	virtual	bool doesFunctionExist(std::string functionSignature,
+	virtual	bool doesFunctionExist(MethodSignature functionSignature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -142,7 +142,7 @@ public:
 
 	 * @return a metadata object or NULL
 	 */
-	virtual	const ReflectedMethod * getFunction(std::string signature,
+	virtual	const ReflectedMethod * getFunction(MethodSignature signature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -185,7 +185,7 @@ public:
 	 * @return List of functions that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedMethod *> getClosestFunctions(
-			std::string name, int count = MAX_SIMILAR);
+			MethodSignature name, int count = MAX_SIMILAR);
 
 
 	/**
@@ -200,7 +200,7 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestFunctionsString(
-			std::string name, int count = MAX_SIMILAR);
+			MethodSignature name, int count = MAX_SIMILAR);
 
 	/**
 	 * Determines if a value (variable or constant) exists with this signature
@@ -226,7 +226,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 * @return true if the field exists
 	 */
-	virtual bool doesVariableExist(std::string signature,
+	virtual bool doesVariableExist(FieldSignature signature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -304,7 +304,7 @@ public:
 	 * 	from those listed.  (defaults to true)
 	 * @return a metadata object or NULL
 	 */
-	virtual	const ReflectedField * getGlobalField(std::string signature,
+	virtual	const ReflectedField * getGlobalField(FieldSignature signature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -346,7 +346,7 @@ public:
 	 * @return List of variables that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedField *> getClosestGlobalFields(
-			std::string name, int count = MAX_SIMILAR);
+			FieldSignature name, int count = MAX_SIMILAR);
 
 
 	/**
@@ -361,7 +361,7 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestGlobalFieldsString(
-			std::string name, int count = MAX_SIMILAR);
+			FieldSignature name, int count = MAX_SIMILAR);
 
 	/**
 	 * Gets the number of classes
@@ -387,12 +387,12 @@ public:
 	 *
 	 *	If trying to find an inner class, the name should be in the form:
 	 *		<outer>::<inner>
-	 * TODO
+	 *
 	 * @param allowMoreMods true if the field can have other modifiers aside
 	 * 	from those listed.  (defaults to true)
 	 *  @return true is that class exists
 	 */
-	virtual	bool doesClassExist(std::string name,
+	virtual	bool doesClassExist(ClassSignature name,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -417,12 +417,12 @@ public:
 	 *
 	 *	If trying to find an inner class, the name should be in the form:
 	 *		<outer>::<inner>
-	 * TODO
+	 *
 	 * @param allowMoreMods true if the field can have other modifiers aside
 	 * 	from those listed.  (defaults to true)
 	 * @return a ReflectedClass object or NULL
 	 */
-	virtual	const ReflectedClass * getClass(std::string signature,
+	virtual	const ReflectedClass * getClass(ClassSignature signature,
 			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
 
 
@@ -439,7 +439,7 @@ public:
 	 *
 	 * @return a ReflectedClass object or NULL
 	 */
-	virtual	const ReflectedClass * getClassFromType(std::string signature) const;
+	virtual	const ReflectedClass * getClassFromType(TypeSignature signature) const;
 
 
 
@@ -468,7 +468,7 @@ public:
 	 * @return List of classes that are close in name to the name given
 	 */
 	virtual std::vector<ReflectedClass *> getClosestClasses(
-			std::string name, int count = MAX_SIMILAR);
+			ClassSignature name, int count = MAX_SIMILAR);
 
 
 	/**
@@ -485,9 +485,9 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestClassesString(
-			std::string name, int count = MAX_SIMILAR);
+			ClassSignature name, int count = MAX_SIMILAR);
 
-	//TODO namespaces - NOT implemented yet
+
 	/**
 	 * Gets the number of namespaces
 	 *

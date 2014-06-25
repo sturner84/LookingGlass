@@ -151,10 +151,11 @@ void ReflectedData::loadNonReflectedData(
  * @param signature Signature of the class
  * @return The reflected class or NULL if it is not found
  */
-ReflectedClass * ReflectedData::findClass(std::string signature) const {
+ReflectedClass * ReflectedData::findClass(ClassSignature signature) const {
 	std::string outerName = "";
 	std::string restName = signature;
 	std::string innerName = "";
+	std::string fullName;
 	ReflectedClass * item = NULL;
 
 	size_t pos = restName.find("::");
@@ -168,6 +169,7 @@ ReflectedClass * ReflectedData::findClass(std::string signature) const {
 		restName = "";
 	}
 
+	fullName = outerName;
 	item = classes.find(outerName)->second;
 
 	while (item != NULL && restName != "") {
@@ -180,7 +182,8 @@ ReflectedClass * ReflectedData::findClass(std::string signature) const {
 			innerName = restName;
 			restName = "";
 		}
-		item = item->getInnerClass(innerName);
+		fullName += "::" + innerName;
+		item = item->getInnerClass(fullName);
 	}
 
 	return item;
@@ -202,7 +205,7 @@ ReflectedData* ReflectedData::getDataInstance()
 
 
 
-bool ReflectedData::doesFunctionExist(std::string functionSignature,
+bool ReflectedData::doesFunctionExist(MethodSignature functionSignature,
 		int modifiers, bool allowMoreMods) const
 {
 	return doesMethodExist(functionSignature, All_Access, true, modifiers,
@@ -223,7 +226,7 @@ const std::vector<std::string> ReflectedData::getFunctionNames() const
 }
 
 
-const ReflectedMethod * ReflectedData::getFunction(std::string signature,
+const ReflectedMethod * ReflectedData::getFunction(MethodSignature signature,
 		int modifiers, bool allowMoreMods) const
 {
 	return getMethod(signature, modifiers, allowMoreMods);
@@ -237,13 +240,13 @@ std::vector<const ReflectedMethod *> ReflectedData::getFunctions(int modifiers,
 }
 
 std::vector<const ReflectedMethod *> ReflectedData::getClosestFunctions(
-		std::string name, int count)
+		MethodSignature name, int count)
 {
 	return getClosest(methods, name, All_Access, true, count);
 }
 
 std::string ReflectedData::getClosestFunctionsString(
-		std::string name, int count)
+		MethodSignature name, int count)
 {
 	return getClosestString(methods, name, All_Access, true, count);
 }
@@ -257,7 +260,7 @@ size_t ReflectedData::getClassCount() const
 
 
 
-bool ReflectedData::doesClassExist(std::string name, int modifiers,
+bool ReflectedData::doesClassExist(ClassSignature name, int modifiers,
 		bool allowMoreMods) const
 {
 	return getClass(name, modifiers, allowMoreMods) != NULL;
@@ -269,7 +272,7 @@ const std::vector<std::string> ReflectedData::getClassNames() const
 	return getNames(classes, All_Access, true);
 }
 
-const ReflectedClass* ReflectedData::getClass(std::string signature,
+const ReflectedClass* ReflectedData::getClass(ClassSignature signature,
 		int modifiers, bool allowMoreMods) const
 {
 	std::string name = StringUtil::trim(signature);
@@ -296,7 +299,7 @@ const ReflectedClass* ReflectedData::getClass(std::string signature,
  *
  * @return a ReflectedClass object or NULL
  */
-const ReflectedClass * ReflectedData::getClassFromType(std::string signature)
+const ReflectedClass * ReflectedData::getClassFromType(TypeSignature signature)
 	const {
 	std::string newSig = signature;
 
@@ -318,20 +321,20 @@ std::vector<ReflectedClass *> ReflectedData::getClasses(int modifiers,
 }
 
 std::vector<ReflectedClass *> ReflectedData::getClosestClasses(
-		std::string name, int count)
+		ClassSignature name, int count)
 {
 	return getClosest(classes, name, All_Access, true, count);
 }
 
 std::string ReflectedData::getClosestClassesString(
-		std::string name, int count)
+		ClassSignature name, int count)
 {
 	return getClosestString(classes, name, All_Access, true, count);
 }
 
 
 
-bool ReflectedData::doesVariableExist(std::string signature,
+bool ReflectedData::doesVariableExist(FieldSignature signature,
 		int modifiers, bool allowMoreMods) const
 {
 	return ReflectedDataBase::doesFieldExist(signature, All_Access, true,
@@ -377,7 +380,7 @@ const std::vector<std::string> ReflectedData::getGlobalFieldNames() const
 
 
 
-const ReflectedField * ReflectedData::getGlobalField(std::string signature,
+const ReflectedField * ReflectedData::getGlobalField(FieldSignature signature,
 		int modifiers, bool allowMoreMods) const
 {
 	return getField(signature, modifiers, allowMoreMods);
@@ -391,13 +394,13 @@ std::vector<const ReflectedField *> ReflectedData::getGlobalFields(
 }
 
 std::vector<const ReflectedField *> ReflectedData::getClosestGlobalFields(
-		std::string name, int count)
+		FieldSignature name, int count)
 {
 	return getClosest(fields, name, All_Access, true, count);
 }
 
 std::string ReflectedData::getClosestGlobalFieldsString(
-		std::string name, int count)
+		FieldSignature name, int count)
 {
 	return getClosestString(fields, name, All_Access, true, count);
 }

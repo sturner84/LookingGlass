@@ -78,19 +78,17 @@ ReflectedBaseClass::ReflectedBaseClass(const ReflectedClass * c, int modifiers) 
 						Class, modifiers)
 {
 	mClass = c;
-
-	ClassInfo info = ReflectionUtil::divideClassSignature(signature);
-	name = info.name;
+	ClassSignature sig(signature);
+	name = sig.getName();
 }
 
-ReflectedBaseClass::ReflectedBaseClass(std::string sig, VisibilityType vis,
+ReflectedBaseClass::ReflectedBaseClass(ClassSignature sig, VisibilityType vis,
 		int modifiers) :
 				ReflectedItem(sig, sig, true, false, vis, Class, modifiers)
 {
 	mClass = NULL;
 	//	name = nName;
-	ClassInfo info = ReflectionUtil::divideClassSignature(signature);
-	name = info.name;
+	name = sig.getName();
 }
 
 
@@ -145,8 +143,8 @@ ReflectedObject::ReflectedObject(const ReflectedClass * c, void * obj)
  * @return Reflected class or NULL
  */
 const ReflectedClass * ReflectedObject::getReturnTypeFromSignature(
-		std::string signature) {
-	std::string returnType = ReflectionUtil::getReturnType(signature);
+		MethodSignature signature) {
+	TypeSignature returnType = signature.getReturnType();
 
 	ReflectedData* data = ReflectedData::getDataInstance();
 //TODO modify this so that it gets inner classes as appropriate????
@@ -160,11 +158,11 @@ const ReflectedClass * ReflectedObject::getReturnTypeFromSignature(
  * @param signature Signature of the function/method
  * @return true if it should be copied
  */
-bool ReflectedObject::shouldCopyReturnValue(std::string signature) {
-	std::string returnType = ReflectionUtil::getReturnType(signature);
+bool ReflectedObject::shouldCopyReturnValue(MethodSignature signature) {
+	TypeSignature returnType = signature.getReturnType();
 
-	return !ReflectionUtil::isPointerType(returnType)
-	&& !ReflectionUtil::isReferenceType(returnType);
+	return !returnType.isPointerType()
+	&& !returnType.isReferenceType();
 }
 
 /**
@@ -177,8 +175,8 @@ bool ReflectedObject::shouldCopyReturnValue(std::string signature) {
 cpgf::GVariant ReflectedObject::copyReturnValue(const ReflectedClass * rClass,
 		cpgf::GVariant returnValue) {
 
-	std::string copyName = ReflectionUtil::createCopyFunctionSignature(
-			rClass->getName());
+	ClassSignature cSig = ClassSignature(rClass->getName());
+	MethodSignature copyName = cSig.createCopyFunctionSignature();
 	if (rClass->doesNonReflectedMethodExist(copyName)) {
 		const ReflectedMethod * cMethod = rClass->getNonReflectedMethod(
 				copyName);
@@ -237,7 +235,7 @@ const std::string ReflectedObject::getClassName()
  * 		to the ReturnType, then this is false.
  */
 #define REF_INVOKE(N, unused) \
-		bool ReflectedObject::invoke(std::string methodSignature \
+		bool ReflectedObject::invoke(MethodSignature methodSignature \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 				{ \
@@ -270,7 +268,7 @@ GPP_REPEAT_2(REF_MAX_ARITY, REF_INVOKE, GPP_EMPTY)
  */
 //const ReflectedClass * rClass,
 #define REF_INVOKE(N, unused) \
-		bool ReflectedObject::invokeReturn(std::string methodSignature, \
+		bool ReflectedObject::invokeReturn(MethodSignature methodSignature, \
 				ReflectedObjectPtr & returnVal \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
@@ -314,18 +312,16 @@ ReflectedObject::operator cpgf::GVariant(){
 void ReflectedClass::loadData(const cpgf::GMetaClass* gclass, bool isGlobal)
 {
 	ReflectedDataBase::loadData(gclass, false);
-	std::string signature;
+//	std::string signature;
 
 	for (size_t i = 0; i < gclass->getConstructorCount(); i++)
 	{
 		//		CPGF_TRACE("Adding Constructors")
-		signature = ReflectionUtil::correctSignature(
-				ReflectionUtil::createConstructorSignature(
-						gclass, gclass->getConstructorAt(i)));
-		constructors[signature]
+		MethodSignature mSignature(gclass, gclass->getConstructorAt(i));
+		constructors[mSignature]
 		             = new ReflectedConstructor(gclass->getConstructorAt(i), false);
 		ReflectedNamespace::addItem(gclass->getConstructorAt(i)->getNamespace(),
-				constructors[signature]);
+				constructors[mSignature]);
 	}
 
 
@@ -339,11 +335,12 @@ void ReflectedClass::loadData(const cpgf::GMetaClass* gclass, bool isGlobal)
 			//if (cpgf::getGlobalMetaClass() != gclass->getClassAt(i)) {
 			ReflectedClass * innerClass = new ReflectedClass(
 					gclass->getClassAt(i), false);
-			innerClasses[gclass->getClassAt(i)->getName()] = innerClass;
+			ClassSignature cSig(gclass->getClassAt(i));
+			innerClasses[cSig.getSignature()] = innerClass;
 			//			CPGF_TRACE("Namespace " << i << " " << gclass->getClassAt(i)->getName() << "\r\n")
 
 			ReflectedNamespace::addItem(gclass->getClassAt(i)->getNamespace(),
-					innerClasses[gclass->getClassAt(i)->getName()]);
+					innerClasses[cSig.getSignature()]);
 			//}
 			//add subclasses
 			//			CPGF_TRACE("Loading " << i << " " << gclass->getClassAt(i)->getName() << " subclasses" << "\r\n")
@@ -382,8 +379,9 @@ void ReflectedClass::loadBaseMethods(const std::map<std::string,
 			= baseMethods.begin(); i != baseMethods.end(); i++) {
 		//		CPGF_TRACE("Loading Base Methods " << i->first << "\r\n")
 		//new method that isn't a destructor
+		MethodSignature mSignature(i->first);
 		if (methods.count(i->first) == 0
-				&& !ReflectionUtil::isDestructor(i->first)) {
+				&& !mSignature.isDestructor()) {
 			//			CPGF_TRACE("Creating new Base Methods " << i->first << "\r\n")
 			//it has to be originally public and be being mapped to a public
 			//visibility.  With protected/private inheritance it may not be
@@ -421,7 +419,7 @@ void ReflectedClass::loadBaseEnums(const std::map<std::string,
 		if (enums.count(i->first) == 0) { //new enum
 			//it has to be originally public and be being mapped to a public
 			//visibility.  With protected/private inheritance it may not be
-			//visibile anymore.
+			//visible anymore.
 			if (i->second->isAccessible() && publicVis == Public)  { //is reflected
 				enums[i->first] = new ReflectedEnum(
 						i->second->getEnum(), true, false);
@@ -490,7 +488,7 @@ void ReflectedClass::loadBaseFields(const std::map<std::string,
 
 void ReflectedClass::loadBaseClasses(std::map<std::string,
 		ReflectedClass *> & classes) {
-	std::string signature;
+//	std::string signature;
 
 	for (size_t i = 0; i < mClass->getBaseCount(); i++)
 	{
@@ -499,31 +497,31 @@ void ReflectedClass::loadBaseClasses(std::map<std::string,
 		//std::string name = getName();
 		//		CPGF_TRACE("Loading Base Classes " << i << "\r\n")
 		if (baseClass) {
-			signature = ReflectionUtil::correctType(baseClass->getName());
+			ClassSignature cSignature(baseClass->getName());
 			//			CPGF_TRACE("Loading Base Classes " << signature << "\r\n")
-			if (classes.count(signature) == 1) {
-				baseClasses[signature] = new ReflectedBaseClass(
-						classes[signature], modifiers);
+			if (classes.count(cSignature) == 1) {
+				baseClasses[cSignature] = new ReflectedBaseClass(
+						classes[cSignature], modifiers);
 				//				CPGF_TRACE("Loading Base Classes created " << signature << "\r\n")
 				//check if its classes have been loaded
-				if (classes[signature]->baseClasses.size() == 0) {
+				if (classes[cSignature]->baseClasses.size() == 0) {
 					//may not have been, so load it
-					classes[signature]->loadBaseClasses(classes);
+					classes[cSignature]->loadBaseClasses(classes);
 				}
 				//				CPGF_TRACE("Loading Base Classes loaded " << signature << "\r\n")
 				// add all methods, fields, operators, enums
-				loadBaseMethods(classes[signature]->methods);
+				loadBaseMethods(classes[cSignature]->methods);
 				//				CPGF_TRACE("Loading Base Classes loaded methods " << signature << "\r\n")
-				loadBaseFields(classes[signature]->fields);
+				loadBaseFields(classes[cSignature]->fields);
 				//				CPGF_TRACE("Loading Base Classes loaded field " << signature << "\r\n")
 				//				loadBaseOperators(classes[signature]->operators);
-				loadBaseEnums(classes[signature]->enums);
+				loadBaseEnums(classes[cSignature]->enums);
 				//				CPGF_TRACE("Loading Base Classes loaded methods " << signature << "\r\n")
 			}
 			else { //nothing reflected
 				//baseClasses[signature] = NULL;
 				//				CPGF_TRACE("Loading Base Classes non-reflected " << signature << "\r\n")
-				baseClasses[signature] = new ReflectedBaseClass(signature,
+				baseClasses[cSignature] = new ReflectedBaseClass(cSignature,
 						Public, modifiers);
 			}
 		}
@@ -541,7 +539,7 @@ void ReflectedClass::loadBaseClasses(std::map<std::string,
  */
 void ReflectedClass::loadNonReflectedData(
 		const cpgf::GMetaNonReflectedItem * nrItem) {
-	std::string signature = nrItem->getSignature();
+	std::string sig = nrItem->getSignature();
 	VisibilityType vis = ReflectedItem::cpgfToLGVisibility(
 			nrItem->getVisibility());
 
@@ -550,24 +548,30 @@ void ReflectedClass::loadNonReflectedData(
 	//			}
 	//CPGF_TRACE("Constructor \r\n")
 	switch (nrItem->getItemCategory()) {
-	case cpgf::mcatConstructor: //move
-		signature = ReflectionUtil::correctSignature(signature);
-		constructors[signature]
-		             = new ReflectedConstructor(signature, false, vis,
+	case cpgf::mcatConstructor:
+	{
+		MethodSignature cSignature(sig);
+		constructors[cSignature]
+		             = new ReflectedConstructor(cSignature, false, vis,
 		            		 nrItem->getModifiers());
 		ReflectedNamespace::addItem(nrItem->getNamespace(),
-				constructors[signature]);
+				constructors[cSignature]);
 		break;
+	}
 	case cpgf::mcatBaseClass:
-		signature = ReflectionUtil::correctClassSignature(signature);
-		baseClasses[signature] = new ReflectedBaseClass(signature, vis,
+	{
+		ClassSignature bcSignature(sig);
+		baseClasses[bcSignature] = new ReflectedBaseClass(bcSignature, vis,
 				nrItem->getModifiers());
 		break;
+	}
 	case cpgf::mcatClass: //inner class
-		signature = ReflectionUtil::correctClassSignature(signature);
-		innerClasses[signature] = new ReflectedClass(signature, false, vis,
+	{
+		ClassSignature icSignature(sig);
+		innerClasses[icSignature] = new ReflectedClass(icSignature, false, vis,
 				nrItem->getModifiers());
 		break;
+	}
 	default:
 		ReflectedDataBase::loadNonReflectedData(nrItem);
 	}
@@ -584,7 +588,7 @@ void ReflectedClass::loadNonReflectedBaseClassMembers(
 	}
 }
 
-//TODO call this from ReflectedData after everything else has been loaded
+
 /**
  * Loads info about baseclasses that are not-reflected.
  *
@@ -702,7 +706,7 @@ bool ReflectedClass::hasStoredObject(void * ptr) const {
  * @return A pointer to the new object is successful. NULL if not.
  */
 #define REF_INVOKE(N, unused) \
-		const ReflectedObjectPtr ReflectedClass::create(std::string signature \
+		const ReflectedObjectPtr ReflectedClass::create(MethodSignature signature \
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) const \
 				{ \
@@ -773,7 +777,9 @@ ReflectedClass::ReflectedClass(const cpgf::GMetaClass* c, bool isGlobal) :
 	loadData(mClass, false);
 	//get rid of the static modifier
 	mods &= ~cpgf::metaModifierStatic;
-	//TODO create full signature?
+
+	ClassSignature name(c);
+	signature = name.getSignature();
 }
 
 
@@ -782,13 +788,13 @@ ReflectedClass::ReflectedClass(const cpgf::GMetaClass* c, bool isGlobal) :
  *
  * @param c Reflected class
  */
-ReflectedClass::ReflectedClass(std::string name, bool isGlobal,
+ReflectedClass::ReflectedClass(ClassSignature name, bool isGlobal,
 		VisibilityType vis, int modifiers) :
-			ReflectedItem(name, name, false, isGlobal, vis, Class, modifiers) {
+			ReflectedItem(name.getName(), name, false, isGlobal, vis,
+					Class, modifiers) {
 	mClass = NULL;
 	//get rid of the static modifier
 	mods &= ~cpgf::metaModifierStatic;
-	//TODO create full signature?
 }
 
 
@@ -819,7 +825,7 @@ const cpgf::GMetaClass* ReflectedClass::getClass() const
 }
 
 
-bool ReflectedClass::doesMethodExist(std::string functionSignature,
+bool ReflectedClass::doesMethodExist(MethodSignature functionSignature,
 		VisibilityAccessType vis, bool inherit, int modifiers,
 		bool allowMoreMods) const
 {
@@ -840,7 +846,7 @@ const std::vector<std::string> ReflectedClass::getMethodNames(
 	return ReflectedDataBase::getMethodNames(vis, inherit);
 }
 
-const ReflectedMethod * ReflectedClass::getMethod(std::string signature,
+const ReflectedMethod * ReflectedClass::getMethod(MethodSignature signature,
 		int modifiers, bool allowMoreMods) const
 {
 	return ReflectedDataBase::getMethod(signature, modifiers, allowMoreMods);
@@ -855,18 +861,18 @@ std::vector<const ReflectedMethod *> ReflectedClass::getMethods(
 }
 
 std::vector<const ReflectedMethod *> ReflectedClass::getClosestMethods(
-		std::string name, VisibilityAccessType vis, bool inherited, int count)
+		MethodSignature name, VisibilityAccessType vis, bool inherited, int count)
 {
 	return getClosest(methods, name, vis, inherited, count);
 }
 
 std::string ReflectedClass::getClosestMethodsString(
-		std::string name, VisibilityAccessType vis, bool inherited, int count)
+		MethodSignature name, VisibilityAccessType vis, bool inherited, int count)
 {
 	return getClosestString(methods, name, vis, inherited, count);
 }
 
-bool ReflectedClass::doesFieldExist(std::string signature,
+bool ReflectedClass::doesFieldExist(FieldSignature signature,
 		VisibilityAccessType vis, bool inherit, int modifiers,
 		bool allowMoreMods) const
 {
@@ -912,7 +918,7 @@ const std::vector<std::string> ReflectedClass::getFieldNames(
 }
 
 
-const ReflectedField * ReflectedClass::getField(std::string signature,
+const ReflectedField * ReflectedClass::getField(FieldSignature signature,
 		int modifiers, bool allowMoreMods) const
 {
 	return ReflectedDataBase::getField(signature, modifiers, allowMoreMods);
@@ -927,23 +933,22 @@ std::vector<const ReflectedField *> ReflectedClass::getFields(
 }
 
 std::vector<const ReflectedField *> ReflectedClass::getClosestFields(
-		std::string name, VisibilityAccessType vis, bool inherited, int count)
+		FieldSignature name, VisibilityAccessType vis, bool inherited, int count)
 {
 	return getClosest(fields, name, vis, inherited, count);
 }
 
 std::string ReflectedClass::getClosestFieldsString(
-		std::string name, VisibilityAccessType vis, bool inherited, int count)
+		FieldSignature name, VisibilityAccessType vis, bool inherited, int count)
 {
 	return getClosestString(fields, name, vis, inherited, count);
 }
 
-bool ReflectedClass::doesConstructorExist(std::string signature,
+bool ReflectedClass::doesConstructorExist(MethodSignature signature,
 		VisibilityAccessType vis, int modifiers,
 		bool allowMoreMods) const
 {
-	return exists(constructors, ReflectionUtil::correctSignature(signature),
-			vis, true, modifiers, allowMoreMods);
+	return exists(constructors, signature, vis, true, modifiers, allowMoreMods);
 	//return (constructors.count(ReflectionUtil::correctSignature(signature)) == 1);
 }
 
@@ -959,11 +964,10 @@ const std::vector<std::string> ReflectedClass::getConstructorNames(
 }
 
 const ReflectedConstructor * ReflectedClass::getConstructor(
-		std::string signature, int modifiers,
+		MethodSignature signature, int modifiers,
 		bool allowMoreMods) const
 {
-	return getItem(constructors, ReflectionUtil::correctSignature(signature),
-			modifiers, allowMoreMods);
+	return getItem(constructors, signature, modifiers, allowMoreMods);
 }
 
 
@@ -974,13 +978,13 @@ std::vector<const ReflectedConstructor *> ReflectedClass::getConstructors(
 }
 
 std::vector<const ReflectedConstructor *> ReflectedClass::getClosestConstructors(
-		std::string name, VisibilityAccessType vis, int count)
+		MethodSignature name, VisibilityAccessType vis, int count)
 {
 	return getClosest(constructors, name, vis, true, count);
 }
 
 std::string ReflectedClass::getClosestConstructorsString(
-		std::string name, VisibilityAccessType vis,  int count)
+		MethodSignature name, VisibilityAccessType vis,  int count)
 {
 	return getClosestString(constructors, name, vis, true, count);
 }
@@ -1008,10 +1012,9 @@ std::string ReflectedClass::getClosestConstructorsString(
 //}
 
 
-bool ReflectedClass::hasBaseClass(std::string name, VisibilityAccessType vis,
+bool ReflectedClass::hasBaseClass(ClassSignature name, VisibilityAccessType vis,
 		int modifiers, bool allowMoreMods) const {
-	return exists(baseClasses, ReflectionUtil::correctType(name),
-			vis, true, modifiers, allowMoreMods);
+	return exists(baseClasses, name, vis, true, modifiers, allowMoreMods);
 	//return (baseClasses.count(ReflectionUtil::correctType(name)) == 1);
 }
 
@@ -1027,11 +1030,10 @@ const std::vector<std::string> ReflectedClass::getBaseClassNames(
 	return getNames(baseClasses, vis, true);
 }
 
-const ReflectedBaseClass * ReflectedClass::getBaseClass(std::string name,
+const ReflectedBaseClass * ReflectedClass::getBaseClass(ClassSignature name,
 		int modifiers, bool allowMoreMods) const
 {
-	return getItem(baseClasses, ReflectionUtil::correctType(name), modifiers,
-			allowMoreMods);
+	return getItem(baseClasses, name, modifiers, allowMoreMods);
 }
 
 
@@ -1046,7 +1048,7 @@ const ReflectedBaseClass * ReflectedClass::getBaseClass(std::string name,
  * @return List of base classes that are close in name to the name given
  */
 std::vector<const ReflectedBaseClass *> ReflectedClass::getClosestBaseClasses(
-		std::string name, VisibilityAccessType vis, int count) {
+		ClassSignature name, VisibilityAccessType vis, int count) {
 	return getClosest(baseClasses, name, vis, true, count);
 }
 
@@ -1063,7 +1065,7 @@ std::vector<const ReflectedBaseClass *> ReflectedClass::getClosestBaseClasses(
  * to the name given
  */
 std::string ReflectedClass::getClosestBaseClassesString(
-		std::string name, VisibilityAccessType vis, int count) {
+		ClassSignature name, VisibilityAccessType vis, int count) {
 	return getClosestString(baseClasses, name, vis, true, count);
 }
 
@@ -1093,10 +1095,9 @@ std::string ReflectedClass::getClosestBaseClassesString(
  * 	from those listed.  (defaults to true)
  *  @return true is name is the name of one of the inner classes
  */
-bool ReflectedClass::hasInnerClass(std::string name,
+bool ReflectedClass::hasInnerClass(ClassSignature name,
 		VisibilityAccessType vis, int modifiers, bool allowMoreMods) const {
-	return exists(innerClasses, ReflectionUtil::correctType(name),
-				vis, true, modifiers, allowMoreMods);
+	return exists(innerClasses, name, vis, true, modifiers, allowMoreMods);
 }
 
 /**
@@ -1147,10 +1148,9 @@ const std::vector<std::string> ReflectedClass::getInnerClassNames(
  * 	from those listed.  (defaults to true)
  * @return a ReflectedClass object or NULL
  */
-ReflectedClass * ReflectedClass::getInnerClass(std::string name,
+ReflectedClass * ReflectedClass::getInnerClass(ClassSignature name,
 		int modifiers, bool allowMoreMods) const {
-	return getItem(innerClasses, ReflectionUtil::correctType(name), modifiers,
-				allowMoreMods);
+	return getItem(innerClasses, name, modifiers, allowMoreMods);
 }
 
 
@@ -1165,7 +1165,7 @@ ReflectedClass * ReflectedClass::getInnerClass(std::string name,
  * @return List of inner classes that are close in name to the name given
  */
 std::vector<ReflectedClass *> ReflectedClass::getClosestInnerClasses(
-		std::string name, VisibilityAccessType vis,
+		ClassSignature name, VisibilityAccessType vis,
 		int count) {
 	return getClosest(innerClasses, name, vis, true, count);
 }
@@ -1183,7 +1183,7 @@ std::vector<ReflectedClass *> ReflectedClass::getClosestInnerClasses(
  * to the name given
  */
 std::string ReflectedClass::getClosestInnerClassesString(
-		std::string name, VisibilityAccessType vis, int count){
+		ClassSignature name, VisibilityAccessType vis, int count){
 	return getClosestString(innerClasses, name, vis, true, count);
 }
 

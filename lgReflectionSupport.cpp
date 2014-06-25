@@ -253,7 +253,7 @@ int LookingGlass::invokeMain(std::string newMainName, std::string &output,
 
 
 #define REF_INVOKE(N, unused) \
-bool LookingGlass::invoke(std::string functionSignature \
+bool LookingGlass::invoke(MethodSignature functionSignature \
 	GPP_COMMA_IF(N) \
 	GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 { \
@@ -271,7 +271,7 @@ bool LookingGlass::invoke(std::string functionSignature \
 
 #define REF_INVOKE(N, unused) \
 bool LookingGlass::invoke(ReflectedObjectPtr object, \
-		std::string functionSignature \
+		MethodSignature functionSignature \
 	GPP_COMMA_IF(N) \
 	GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) \
 { \
@@ -316,15 +316,15 @@ bool LookingGlass::invokeFunction(std::string functionSignature \
 
 	const ReflectedMethod * LookingGlass::getFunctionObject(
 			const ReflectedObject * object,
-			std::string nSignature, bool allowNonReflected) {
+			MethodSignature nSignature, bool allowNonReflected) {
 
 		ReflectedData* data = ReflectedData::getDataInstance();
-		std::string signature = ReflectionUtil::correctSignature(nSignature);
+		//std::string signature = nSignature;
 		const ReflectedMethod * func;
 
 		if (object == NULL) {
-			if (data->doesFunctionExist(signature)) {
-				func = data->getFunction(signature);
+			if (data->doesFunctionExist(nSignature)) {
+				func = data->getFunction(nSignature);
 			}
 			else {
 				throw INVOKE_BAD_METHOD;
@@ -335,15 +335,15 @@ bool LookingGlass::invokeFunction(std::string functionSignature \
 			if (object->getClass() != NULL)
 			{
 				const ReflectedClass* c = object->getClass();
-				if (c->doesMethodExist(signature, All_Access, true))
+				if (c->doesMethodExist(nSignature, All_Access, true))
 				{
-					func = c->getMethod(signature, ReflectedData::ALLOW_ALL_MODIFIERS, false);
+					func = c->getMethod(nSignature, ReflectedData::ALLOW_ALL_MODIFIERS, false);
 				}
 				else
 				{
 					if (allowNonReflected && c->doesNonReflectedMethodExist(
-							signature, All_Access, true)) {
-						func = c->getNonReflectedMethod(signature);
+							nSignature, All_Access, true)) {
+						func = c->getNonReflectedMethod(nSignature);
 					}
 					else {
 						throw INVOKE_BAD_METHOD;

@@ -12,6 +12,16 @@
 #include <map>
 #include <string>
 #include <boost/shared_ptr.hpp>
+#include "lgReflectionUtil.h"
+
+
+namespace cpgf {
+	/**
+	 * Used when excluding modifiers (see ItemFilter). This excludes everything
+	 * not explicitly granted.
+	 */
+	const int metaModifierExcludeAll = -1;
+}
 
 namespace cpptesting {
 
@@ -275,7 +285,7 @@ public:
 	 * @param inherit Determines if the method was inherited or not
 	 * @param vis Visibility of the method
 	 */
-	ReflectedMethod(std::string sig, bool inherit, bool isGlobal,
+	ReflectedMethod(MethodSignature sig, bool inherit, bool isGlobal,
 			VisibilityType vis, int modifiers);
 
 	/**
@@ -373,7 +383,7 @@ public:
 	 * @param inherit Determines if the constructor was inherited or not
 	 * @param vis Visibility of the constructor
 	 */
-	ReflectedConstructor(std::string sig, bool inherit,
+	ReflectedConstructor(MethodSignature sig, bool inherit,
 			VisibilityType vis, int modifiers);
 
 	/**
@@ -440,7 +450,7 @@ public:
 	 * @param inherit Determines if the field was inherited or not
 	 * @param vis Visibility of the field
 	 */
-	ReflectedField(std::string sig, bool inherit, bool isGlobal,
+	ReflectedField(FieldSignature sig, bool inherit, bool isGlobal,
 			VisibilityType vis, int modifiers);
 
 	/**
@@ -564,12 +574,12 @@ protected:
 		std::map<std::string, int> enumByNames;
 		std::map<int, std::string> enumByValues;
 
-		/**
-		 * Loads data from the reflected class into the maps (like constructors)
-		 *
-		 * @param gclass Reflected class
-		 */
-		virtual void loadData(const cpgf::GMetaEnum* genum);
+//		/**
+//		 * Loads data from the reflected class into the maps (like constructors)
+//		 *
+//		 * @param gclass Reflected class
+//		 */
+//		virtual void loadData(const cpgf::GMetaEnum* genum);
 
 	public:
 
@@ -588,7 +598,7 @@ protected:
 		 * @param inherit Weather this is inherited or not
 		 * @param vis Visibility of the enum
 		 */
-		ReflectedEnum(std::string nName, bool inherit, bool isGlobal,
+		ReflectedEnum(EnumSignature nName, bool inherit, bool isGlobal,
 				VisibilityType vis, int modifiers);
 
 		/**
@@ -881,6 +891,196 @@ public:
 	 */
 	static size_t getNamespaceCount();
 };
+
+
+//TODO add class to store options for finding items
+//TODO create constructors for converting from visibility, modifiers, etc.
+
+/**
+ * @class SignatureFilter
+ * Contains options that can be applied when looking up/finding items by their
+ * signature.  This includes visibility, required modifiers, excluded modifiers,
+ * whether it is inherited or not, etc.
+ *
+ * @author scturner
+ * @version 6/23/2014
+ */
+class ItemFilter {
+private:
+	VisibilityAccessType visibility;
+	bool allowInherited;
+	int reqModifiers;
+	int excludedModifiers;
+
+	/**
+	 * Sets the options for this filter.
+	 *
+	 * @param vis Visibility required for this item
+	 * @param inherit True if inherited items should be included, false if not.
+	 * @param reqMods Modifiers that are required to be present. These can be
+	 * ORed together
+	 *	List of modifiers from cpgf/gmetacommon.h that apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 * @param exMods Modifiers that cannot be present. The required modifiers
+	 * take precedence over the excluded ones. See reqMods for a list of
+	 * modifiers. Use cpgf::metaModifierExcludeAll to disallow everything
+	 * but those modifiers in reqMods.
+	 *
+	 */
+	void setOptions(VisibilityAccessType vis, bool inherit, int reqMods,
+			int exMods);
+public:
+	/**
+	 * Default constructor. Defaults to public, non-inherited items with any
+	 * modifiers.
+	 */
+	ItemFilter() {
+		setOptions(Public_Access, false, cpgf::metaModifierNone,
+				cpgf::metaModifierNone);
+	}
+
+	/**
+	 * Default constructor. Defaults to public, non-inherited items with any
+	 * modifiers.
+	 *
+	 * @param vis Visibility required for this item
+	 */
+	ItemFilter(VisibilityAccessType vis) {
+		setOptions(vis, false, cpgf::metaModifierNone, cpgf::metaModifierNone);
+	}
+
+	/**
+	 * Default constructor. Defaults to public, non-inherited items with any
+	 * modifiers.
+	 * @param inherit True if inherited items should be included, false if not.
+	 *
+	 */
+	ItemFilter(bool inherit) {
+		setOptions(Public_Access, inherit, cpgf::metaModifierNone,
+				cpgf::metaModifierNone);
+	}
+
+	/**
+	 * Default constructor. Defaults to public, non-inherited items with any
+	 * modifiers.
+	 *
+	 * @param reqMods Modifiers that are required to be present. These can be
+	 * ORed together
+	 *	List of modifiers from cpgf/gmetacommon.h that apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 * @param exMods Modifiers that cannot be present. The required modifiers
+	 * take precedence over the excluded ones. See reqMods for a list of
+	 * modifiers. Use cpgf::metaModifierExcludeAll to disallow everything
+	 * but those modifiers in reqMods.
+	 *
+	 */
+	ItemFilter(int reqMods,  int exMods = cpgf::metaModifierNone) {
+		setOptions(Public_Access, false, reqMods, exMods);
+	}
+
+	/**
+	 * Default constructor. Defaults to public, non-inherited items with any
+	 * modifiers.
+	 *
+	 * @param vis Visibility required for this item
+	 * @param reqMods Modifiers that are required to be present. These can be
+	 * ORed together
+	 *	List of modifiers from cpgf/gmetacommon.h that apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 * @param exMods Modifiers that cannot be present. The required modifiers
+	 * take precedence over the excluded ones. See reqMods for a list of
+	 * modifiers. Use cpgf::metaModifierExcludeAll to disallow everything
+	 * but those modifiers in reqMods.
+	 *
+	 */
+	ItemFilter(VisibilityAccessType vis, int reqMods,
+			int exMods = cpgf::metaModifierNone) {
+		setOptions(vis, false, reqMods, exMods);
+	}
+
+	/**
+	 * Default constructor. Defaults to public, non-inherited items with any
+	 * modifiers.
+	 *
+	 * @param vis Visibility required for this item
+	 * @param inherit True if inherited items should be included, false if not.
+	 * @param reqMods Modifiers that are required to be present. These can be
+	 * ORed together
+	 *	List of modifiers from cpgf/gmetacommon.h that apply here:
+	 * 		metaModifierNone
+	 * 		metaModifierStatic
+	 * 		metaModifierVirtual
+	 * 		metaModifierPureVirtual
+	 * 		metaModifierTemplate
+	 * 		metaModifierConst
+	 * 		metaModifierVolatile
+	 * 		metaModifierInline
+	 * 		metaModifierExplicit
+	 * 		metaModifierExtern
+	 * 		metaModifierMutable
+	 * @param exMods Modifiers that cannot be present. The required modifiers
+	 * take precedence over the excluded ones. See reqMods for a list of
+	 * modifiers. Use cpgf::metaModifierExcludeAll to disallow everything
+	 * but those modifiers in reqMods.
+	 *
+	 */
+	ItemFilter(VisibilityAccessType vis, bool inherit,
+			int reqMods = cpgf::metaModifierNone,
+			int exMods = cpgf::metaModifierNone) {
+		setOptions(vis, inherit, reqMods, exMods);
+	}
+
+
+	/**
+	 * Determines if this item is allowed with this filter.
+	 *
+	 * This looks at the visibility of the item, if it is inherited or not,
+	 * and its modifiers to determine if this item should be included.
+	 *
+	 * With the modifiers, there are required and excluded modifiers.  Required
+	 * modifiers take precedence over excluded modifiers.  So, if both include
+	 * the metaModifierConst value, items that are declared const will be
+	 * included.
+	 *
+	 * @param item Reflected item to test
+	 * @param addMods Additional required modifiers (gernerally from a Signature)
+	 *
+	 * @return true if this item meets the requirements of this filter
+	 */
+	bool isAllowed(const ReflectedItem * item,
+			int addMods = cpgf::metaModifierNone);
+};
+
 
 
 }
