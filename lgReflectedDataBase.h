@@ -105,7 +105,7 @@ protected:
 	 */
 	template <class T>
 	T getItem(const std::map<std::string, T> &dataMap,
-			const Signature & name, int modifiers, bool allowMoreMods) const;
+			const Signature & name, const ItemFilter & filter) const;
 
 	/**
 	 * Gets a list of all of the names from one of the maps
@@ -118,8 +118,8 @@ protected:
 	 */
 	template <class T>
 	const std::vector<std::string> getNames(
-			const std::map<std::string, T> &vMap, VisibilityAccessType vis,
-			bool inherited) const;
+			const std::map<std::string, T> &vMap,
+			const ItemFilter & filter) const;
 
 	/**
 	 * Counts the number of values in the map. The value is different depending
@@ -133,8 +133,8 @@ protected:
 	 */
 	template <class T>
 	size_t countItems(
-			const std::map<std::string, T> &vMap, VisibilityAccessType vis,
-			bool inherited) const;
+			const std::map<std::string, T> &vMap,
+			const ItemFilter & filter) const;
 
 	/**
 	 * Gets a list of all of the items from one of the maps
@@ -148,8 +148,7 @@ protected:
 	 */
 	template <class T>
 	std::vector<T> getItems(
-		const std::map<std::string, T> &vMap, VisibilityAccessType vis,
-		bool inherited, int modifiers, bool allowMoreMods) const;
+		const std::map<std::string, T> &vMap, const ItemFilter & filter) const;
 
 	/**
 	 * Gets a list of the items matching the names in names
@@ -165,8 +164,8 @@ protected:
 	template <class T>
 	std::vector<T> getItems(
 			const std::map<std::string, T> &vMap,
-			const std::vector<std::string> &names, VisibilityAccessType vis,
-			bool inherited, int modifiers, bool allowMoreMods) const;
+			const std::vector<std::string> &names,
+			const ItemFilter & filter) const;
 
 	/**
 	 * Gets a list of all of the items closest in name to the supplied name
@@ -182,7 +181,7 @@ protected:
 	template <class T>
 	std::vector<T> getClosest(
 			const std::map<std::string, T> &vMap, Signature name,
-			VisibilityAccessType vis, bool inherited, int count) const;
+			const ItemFilter & filter, int count) const;
 
 	/**
 	 * Gets a string comparing the closest items to the name to the name
@@ -198,7 +197,7 @@ protected:
 	template <class T>
 	std::string getClosestString(
 			const std::map<std::string, T> &vMap, Signature name,
-			VisibilityAccessType vis, bool inherited, int count) const;
+			const ItemFilter & filter, int count) const;
 
 
 	/**
@@ -214,8 +213,7 @@ protected:
 	 */
 	template <class T>
 	bool exists(const std::map<std::string, T> &vMap, Signature name,
-			VisibilityAccessType vis, bool inherited, int modifiers,
-			bool allowMoreMods) const;
+			const ItemFilter & filter) const;
 
 	/**
 	 * Checks to see if a function exists using the function's signature.
@@ -226,63 +224,50 @@ protected:
 	 * 		takes an int and double as parameters
 	 *
 	 *  @param functionSignature Signature of the function
-	 *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
-	 *  @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 *  @return true is that function exists
 	 */
 	virtual bool doesMethodExist(MethodSignature functionSignature,
-			VisibilityAccessType vis = Public_Access, bool inherited = false,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+			ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets the number of function signatures that are being reflected
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return the number of function signatures
 	 */
-	virtual size_t getMethodCount(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+	virtual size_t getMethodCount(ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets a list of all function signatures that are being reflected
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of function signatures
 	 */
 	virtual const std::vector<std::string> getMethodNames(
-			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets a function that corresponds to the signature or NULL
+	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return a metadata object or NULL
 	 */
 	virtual const ReflectedMethod * getMethod(MethodSignature signature,
-			int modifiers, bool allowMoreMods) const;
+			ItemFilter filter = ItemFilter(All_Access, true)) const;
 
 
 	/**
@@ -294,43 +279,50 @@ protected:
 	 * 		takes an int and double as parameters
 	 *
 	 *  @param functionSignature Signature of the function
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 *  @return true is that function exists
 	 */
 	virtual bool doesNonReflectedMethodExist(MethodSignature functionSignature,
-			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+			ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets the number of function signatures that are being reflected
 	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return the number of function signatures
 	 */
-	virtual size_t getNonReflectedMethodCount(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+	virtual size_t getNonReflectedMethodCount(ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets a list of all function signatures that are being reflected
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of function signatures
 	 */
 	virtual const std::vector<std::string> getNonReflectedMethodNames(
-			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets a function that corresponds to the signature or NULL
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a metadata object or NULL
 	 */
-	virtual const ReflectedMethod * getNonReflectedMethod(MethodSignature signature) const;
+	virtual const ReflectedMethod * getNonReflectedMethod(
+			MethodSignature signature, ItemFilter filter = ItemFilter(All_Access, true)) const;
 
 
 
@@ -339,111 +331,99 @@ protected:
 	 * Determines if a field exists with this signature
 	 *
 	 * @param signature Signature of the value (i.e. int x or const double y)
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
 	 * @return true if the field exists
 	 */
-	virtual bool doesFieldExist(FieldSignature signature, VisibilityAccessType vis = Public_Access,
-			bool inherited = false, int modifiers = ALLOW_ALL_MODIFIERS,
-			bool allowMoreMods = true) const;
+	virtual bool doesFieldExist(FieldSignature signature,
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets the number of variables declared with a global scope
-	* @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	  *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return number of variables with a global scope.
 	 */
-	virtual size_t getVariableCount(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+	virtual size_t getVariableCount(ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets the signatures of variables declared with a
 	 * global scope
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of the signatures of variables
 	 * with a global scope.
 	 */
 	virtual const std::vector<std::string> getVariableNames(
-			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets the number of constants declared with a global scope
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return number of constants with a global scope.
 	 */
-	virtual size_t getConstantCount(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+	virtual size_t getConstantCount(ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets the signatures of constants declared with a
 	 * global scope
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of the signatures of constants
 	 * with a global scope.
 	 */
 	virtual const std::vector<std::string> getConstantNames(
-			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+			ItemFilter filter = ItemFilter()) const;
 	//all variables and fields
 
 
 	/**
 	 * Gets the number of constants and variables declared with a global scope
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return number of constants and variables with a global scope.
 	 */
-	virtual size_t getFieldCount(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+	virtual size_t getFieldCount(ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets the signatures of constants and variables declared with a
 	 * global scope
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 **  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of the signatures of constants and variables
 	 * with a global scope.
 	 */
-	virtual const std::vector<std::string> getFieldNames(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+	virtual const std::vector<std::string> getFieldNames(
+			ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets a variable that corresponds to the signature or NULL
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a metadata object or NULL
 	 */
 	virtual const ReflectedField * getField(FieldSignature signature,
-			int modifiers, bool allowMoreMods) const;
+			ItemFilter filter = ItemFilter(All_Access, true)) const;
 
 
 public:
@@ -456,233 +436,93 @@ public:
 	static const int MAX_SIMILAR;
 
 
-//	/**
-//	 * Checks to see if an operator exists using the signature.
-//	 *
-//	 * Usage:
-//	 * 	int foo(int, double) // update documentation
-//	 * 		Check to see if a function foo exists that returns an int and
-//	 * 		takes an int and double as parameters
-//	 *
-//	 *  @param functionSignature Signature of the function
-//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-//	 *  @param inherited Determines if inherited values are included (by default
-//	 *  	this is false)
-//	 *  @return true is that function exists
-//	 */
-//	virtual bool doesOperatorExist(std::string functionSignature,
-//			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
-//
-//	/**
-//	 * Gets the number of operators that are being reflected
-//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-//	 *  @param inherited Determines if inherited values are included (by default
-//	 *  	this is false)
-//	 * @return the number of operators
-//	 */
-//	virtual size_t getOperatorCount(VisibilityAccessType vis = Public_Access,
-//			bool inherited = false) const;
-//
-//	/**
-//	 * Gets a list of all operators that are being reflected
-//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-//	 *  @param inherited Determines if inherited values are included (by default
-//	 *  	this is false)
-//	 * @return a list of operators
-//	 */
-//	virtual const std::vector<std::string> getOperatorNames(VisibilityAccessType vis = Public_Access,
-//			bool inherited = false) const;
-//
-//	/**
-//	 * Gets an operator that corresponds to the signature or NULL
-//	 *
-//	 * @return a metadata object or NULL
-//	 */
-//	virtual const ReflectedOperator * getOperator(std::string signature) const;
-//
-//
-//	/**
-//	 * Gets a list of all operators in the class
-//	 *
-//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-//	 * @param inherited True if inherited operators should be included.
-//	 *
-//	 * @return List of operators in the class
-//	 */
-//	virtual std::vector<const ReflectedOperator *> getOperators(
-//			VisibilityAccessType vis = Public_Access, bool inherited = false);
-//
-//	/**
-//	 * Gets a list of the closest operators to the name provided
-//	 *
-//	 * @param name Name to find
-//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-//	 * @param inherited True if inherited operators should be included.
-//	 * @param count Maximum number to return (may be less or more if there
-//	 *  are values that are equally close to the name)
-//	 *
-//	 * @return List of operators that are close in name to the name given
-//	 */
-//	virtual std::vector<const ReflectedOperator *> getClosestOperators(
-//			std::string name, VisibilityAccessType vis = Public_Access,
-//			bool inherited = false, int count = MAX_SIMILAR);
-//
-//
-//	/**
-//	 * Gets a string comparing the name to the closest names found
-//	 *
-//	 * @param name Name to find
-//	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-//	 * @param inherited True if inherited values should be included.
-//	 * @param count Maximum number to return (may be less or more if there
-//	 *  are values that are equally close to the name)
-//	 *
-//	 * @return String with a list of operators that are close in name
-//	 * to the name given
-//	 */
-//	virtual std::string getClosestOperatorsString(
-//			std::string name, VisibilityAccessType vis = Public_Access,
-//			bool inherited = false, int count = MAX_SIMILAR);
 
-	//ignore values, just look for name
 	/**
 	 * Checks to see if an enum exists using the name.
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
-	 *  @param name Name of the enum
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
 	 *  @return true is that enum exists
 	 */
-	virtual bool doesEnumExist(EnumSignature name, VisibilityAccessType vis = Public_Access,
-			bool inherited = false, int modifiers = ALLOW_ALL_MODIFIERS,
-			bool allowMoreMods = true) const;
+	virtual bool doesEnumExist(EnumSignature name,
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets the number of enums that are being reflected
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return the number of enums
 	 */
-	virtual size_t getEnumCount(VisibilityAccessType vis = Public_Access,
-			bool inherited = false) const;
+	virtual size_t getEnumCount(ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets a list of all enums that are being reflected
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 *  @param inherited Determines if inherited values are included (by default
-	 *  	this is false)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of enums
 	 */
 	virtual const std::vector<std::string> getEnumNames(
-			VisibilityAccessType vis = Public_Access, bool inherited = false) const;
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets an enum that corresponds to the name or NULL
 	 *
 	 * @param signature name of the enum
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
-	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return an enum object or NULL
 	 */
 	virtual const ReflectedEnum * getEnum(EnumSignature signature,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+			ItemFilter filter = ItemFilter(All_Access, true)) const;
 
 
 	/**
 	 * Gets a list of all enums in the class
 	 *
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param inherited True if inherited enums should be included.
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
 	 * @return List of enums in the class
 	 */
 	virtual std::vector<const ReflectedEnum *> getEnums(
-			VisibilityAccessType vis = Public_Access, bool inherited = false,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
+			ItemFilter filter = ItemFilter());
 
 	/**
 	 * Gets a list of the closest enums to the name provided
 	 *
 	 * @param name Name to find
-	* @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	  * @param inherited True if inherited enums should be included.
-	 * @param count Maximum number to return (may be less or more if there
-	 *  are values that are equally close to the name)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return List of enums that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedEnum *> getClosestEnums(
-			EnumSignature name, VisibilityAccessType vis = Public_Access,
-			bool inherited = false, int count = MAX_SIMILAR);
+			EnumSignature name, ItemFilter filter = ItemFilter(),
+			int count = MAX_SIMILAR);
 
 	/**
 	 * Gets a string comparing the name to the closest names found
 	 *
 	 * @param name Name to find
-	 * @param vis Visibility of items to retrieve. Generally this is Public_Access.
-	 * @param inherited True if inherited values should be included.
-	 * @param count Maximum number to return (may be less or more if there
-	 *  are values that are equally close to the name)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return String with a list of enums that are close in name
 	 *  to the name given
 	 */
 	virtual std::string getClosestEnumsString(
-			EnumSignature name, VisibilityAccessType vis = Public_Access,
-			bool inherited = false, int count = MAX_SIMILAR);
+			EnumSignature name, ItemFilter filter = ItemFilter(),
+			int count = MAX_SIMILAR);
 
 };
 
@@ -690,14 +530,15 @@ public:
 //use the modifiers to add to the parameter
 template <class T>
 T ReflectedDataBase::getItem(const std::map<std::string, T> & dataMap,
-		const Signature & name, int modifiers, bool allowMoreMods) const
+		const Signature & name, const ItemFilter & filter) const
 {
 	if (dataMap.count(name.getSignature()) == 1)
 	{
 		T item = dataMap.find(name.getSignature())->second;
 		 //-1 = ignore modifiers
-		if (modifiers == ALLOW_ALL_MODIFIERS || modifiers == item->getModifiers()
-				|| (allowMoreMods && (modifiers & item->getModifiers()) != 0)) {
+//		if (modifiers == ALLOW_ALL_MODIFIERS || modifiers == item->getModifiers()
+//				|| (allowMoreMods && (modifiers & item->getModifiers()) != 0)) {
+		if (filter.isAllowed(item, name.getModifiers())) {
 			return item;
 		}
 	}
@@ -708,8 +549,7 @@ T ReflectedDataBase::getItem(const std::map<std::string, T> & dataMap,
 
 template <class T>
 const std::vector<std::string> ReflectedDataBase::getNames(
-		const std::map<std::string, T> &vMap, VisibilityAccessType vis,
-		bool inherited) const
+		const std::map<std::string, T> &vMap, const ItemFilter & filter) const
 {
 	std::vector<std::string> names;
 
@@ -718,8 +558,9 @@ const std::vector<std::string> ReflectedDataBase::getNames(
 	{
 		//get either the objects declared in the class or if
 		// inherited is true, everything
-		if ((vis & it->second->getVisibility()) &&
-				(inherited || !it->second->isInherited()))
+//		if ((vis & it->second->getVisibility()) &&
+//				(inherited || !it->second->isInherited()))
+		if (filter.isAllowed(it->second))
 		{
 			names.push_back(it->first);
 		}
@@ -730,8 +571,7 @@ const std::vector<std::string> ReflectedDataBase::getNames(
 
 template <class T>
 size_t ReflectedDataBase::countItems(
-		const std::map<std::string, T> &vMap, VisibilityAccessType vis,
-		bool inherited) const
+		const std::map<std::string, T> &vMap, const ItemFilter & filter) const
 {
 	size_t count = 0;
 
@@ -739,8 +579,9 @@ size_t ReflectedDataBase::countItems(
 			it != vMap.end(); it++)
 	{
 		//get the objects declared in the class
-		if ((vis & it->second->getVisibility()) &&
-						(inherited || !it->second->isInherited()))
+//		if ((vis & it->second->getVisibility()) &&
+//						(inherited || !it->second->isInherited()))
+		if (filter.isAllowed(it->second))
 		{
 			count++;
 		}
@@ -754,8 +595,7 @@ size_t ReflectedDataBase::countItems(
 
 template <class T>
 std::vector<T> ReflectedDataBase::getItems(
-	const std::map<std::string, T> &vMap, VisibilityAccessType vis,
-	bool inherited, int modifiers, bool allowMoreMods) const
+	const std::map<std::string, T> &vMap, const ItemFilter & filter) const
 {
 	std::vector<T> items;
 
@@ -764,10 +604,11 @@ std::vector<T> ReflectedDataBase::getItems(
 	{
 		//get either the objects declared in the class or if
 		// inherited is true, everything
-		if ((vis & it->second->getVisibility())
-				&& (inherited || it->second->isInherited() == false)
-				&& (modifiers == ALLOW_ALL_MODIFIERS || modifiers == it->second->getModifiers()
-				|| (allowMoreMods && (modifiers & it->second->getModifiers()) != 0)))
+//		if ((vis & it->second->getVisibility())
+//				&& (inherited || it->second->isInherited() == false)
+//				&& (modifiers == ALLOW_ALL_MODIFIERS || modifiers == it->second->getModifiers()
+//				|| (allowMoreMods && (modifiers & it->second->getModifiers()) != 0)))
+		if (filter.isAllowed(it->second))
 		{
 			items.push_back(it->second);
 		}
@@ -780,19 +621,19 @@ std::vector<T> ReflectedDataBase::getItems(
 template <class T>
 std::vector<T> ReflectedDataBase::getItems(
 		const std::map<std::string, T> &vMap,
-		const std::vector<std::string> &names, VisibilityAccessType vis,
-		bool inherited, int modifiers, bool allowMoreMods) const
+		const std::vector<std::string> &names, const ItemFilter & filter) const
 {
 	std::vector<T> items;
 
 	for (std::vector<std::string>::const_iterator it = names.begin();
 			it != names.end(); it++)
 	{
-		T item = getItem(vMap, Signature(*it), modifiers, allowMoreMods);
+		T item = getItem(vMap, Signature(*it), filter);
 		//get either the objects declared in the class or if
 		// inherited is true, everything
-		if (item && (vis & item->getVisibility()) &&
-				(inherited || item->isInherited() == false))
+//		if (item && (vis & item->getVisibility()) &&
+//				(inherited || item->isInherited() == false))
+		if (item != NULL)
 		{
 			items.push_back(item);
 		}
@@ -805,32 +646,32 @@ std::vector<T> ReflectedDataBase::getItems(
 template <class T>
 std::vector<T> ReflectedDataBase::getClosest(
 		const std::map<std::string, T> &vMap, Signature name,
-		VisibilityAccessType vis, bool inherited, int count) const
+		const ItemFilter & filter, int count) const
 {
 	std::vector<std::string> names = StringDistance::getNClosest(name,
-			getNames(vMap, vis, inherited), count);
+			getNames(vMap, filter), count);
 	//get the items by name ignoring any modifiers
-	return getItems(vMap, names, vis, inherited, ALLOW_ALL_MODIFIERS, false);
+	return getItems(vMap, names, filter);
 }
 
 template <class T>
 std::string ReflectedDataBase::getClosestString(
 		const std::map<std::string, T> &vMap, Signature name,
-		VisibilityAccessType vis, bool inherited, int count) const
+		const ItemFilter & filter, int count) const
 {
 	return StringDistance::getNClosestAsString(name,
-			getNames(vMap, vis, inherited), count);
+			getNames(vMap, filter), count);
 }
 
 
 template <class T>
 bool ReflectedDataBase::exists(const std::map<std::string, T> &vMap,
-		Signature name, VisibilityAccessType vis, bool inherited,
-		int modifiers, bool allowMoreMods) const
+		Signature name, const ItemFilter & filter) const
 {
-	T m = getItem(vMap, name, modifiers, allowMoreMods);
-	return (m && (vis & m->getVisibility())
-			&& (inherited || !m->isInherited()));
+//	T m = getItem(vMap, name, filter);
+	return getItem(vMap, name, filter) != NULL;
+//	return (m && (vis & m->getVisibility())
+//			&& (inherited || !m->isInherited()));
 }
 
 

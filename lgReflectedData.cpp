@@ -206,74 +206,73 @@ ReflectedData* ReflectedData::getDataInstance()
 
 
 bool ReflectedData::doesFunctionExist(MethodSignature functionSignature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return doesMethodExist(functionSignature, All_Access, true, modifiers,
-			allowMoreMods);
+	return doesMethodExist(functionSignature, filter);
 }
 
 
-size_t ReflectedData::getFunctionCount() const
+size_t ReflectedData::getFunctionCount(ItemFilter filter) const
 {
-	return getMethodCount(All_Access, true);
+	return getMethodCount(filter);
 }
 
 
-const std::vector<std::string> ReflectedData::getFunctionNames() const
+const std::vector<std::string> ReflectedData::getFunctionNames(
+		ItemFilter filter) const
 {
 
-	return getMethodNames(All_Access, true);
+	return getMethodNames(filter);
 }
 
 
 const ReflectedMethod * ReflectedData::getFunction(MethodSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return getMethod(signature, modifiers, allowMoreMods);
+	return getMethod(signature, filter);
 }
 
 
-std::vector<const ReflectedMethod *> ReflectedData::getFunctions(int modifiers,
-		bool allowMoreMods)
+std::vector<const ReflectedMethod *> ReflectedData::getFunctions(ItemFilter filter)
 {
-	return getItems(methods, All_Access, true, modifiers, allowMoreMods);
+	return getItems(methods, filter);
 }
 
 std::vector<const ReflectedMethod *> ReflectedData::getClosestFunctions(
-		MethodSignature name, int count)
+		MethodSignature name, ItemFilter filter, int count)
 {
-	return getClosest(methods, name, All_Access, true, count);
+	return getClosest(methods, name,filter, count);
 }
 
 std::string ReflectedData::getClosestFunctionsString(
-		MethodSignature name, int count)
+		MethodSignature name, ItemFilter filter, int count)
 {
-	return getClosestString(methods, name, All_Access, true, count);
+	return getClosestString(methods, name, filter, count);
 }
 
 
 
-size_t ReflectedData::getClassCount() const
+size_t ReflectedData::getClassCount(ItemFilter filter) const
 {
 	return classes.size();
 }
 
 
 
-bool ReflectedData::doesClassExist(ClassSignature name, int modifiers,
-		bool allowMoreMods) const
+bool ReflectedData::doesClassExist(ClassSignature name, ItemFilter filter) const
 {
-	return getClass(name, modifiers, allowMoreMods) != NULL;
+	return getClass(name, filter) != NULL;
 	//return (classes.count(StringUtil::trim(name)) == 1);
 }
 
-const std::vector<std::string> ReflectedData::getClassNames() const
+const std::vector<std::string> ReflectedData::getClassNames(
+		ItemFilter filter) const
 {
-	return getNames(classes, All_Access, true);
+	return getNames(classes, filter);
 }
 
 const ReflectedClass* ReflectedData::getClass(ClassSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
 	std::string name = StringUtil::trim(signature);
 	const ReflectedClass * item = findClass(name);
@@ -281,8 +280,9 @@ const ReflectedClass* ReflectedData::getClass(ClassSignature signature,
 //	if (classes.count(name) == 1)
 	if (item != NULL)
 	{
-		if (modifiers == ALLOW_ALL_MODIFIERS || modifiers == item->getModifiers()
-				|| (allowMoreMods && (modifiers & item->getModifiers()) != 0)) {
+//		if (modifiers == ALLOW_ALL_MODIFIERS || modifiers == item->getModifiers()
+//				|| (allowMoreMods && (modifiers & item->getModifiers()) != 0)) {
+		if (filter.isAllowed(item, signature.getModifiers())) {
 			return item;
 		}
 		//return classes[name]; //cannot do this because the method is const
@@ -309,100 +309,101 @@ const ReflectedClass * ReflectedData::getClassFromType(TypeSignature signature)
 	newSig = boost::regex_replace(newSig, matcher, REMOVE_MODS_REPLACE,
 			boost::match_default | boost::format_all);
 
-	return getClass(StringUtil::trim(newSig), ALLOW_ALL_MODIFIERS, false);
+	return getClass(StringUtil::trim(newSig), ItemFilter());
 }
 
 
 
-std::vector<ReflectedClass *> ReflectedData::getClasses(int modifiers,
-		bool allowMoreMods)
+std::vector<ReflectedClass *> ReflectedData::getClasses(ItemFilter filter)
 {
-	return getItems(classes, All_Access, true, modifiers, allowMoreMods);
+	return getItems(classes, filter);
 }
 
 std::vector<ReflectedClass *> ReflectedData::getClosestClasses(
-		ClassSignature name, int count)
+		ClassSignature name, ItemFilter filter, int count)
 {
-	return getClosest(classes, name, All_Access, true, count);
+	return getClosest(classes, name, filter, count);
 }
 
 std::string ReflectedData::getClosestClassesString(
-		ClassSignature name, int count)
+		ClassSignature name, ItemFilter filter, int count)
 {
-	return getClosestString(classes, name, All_Access, true, count);
+	return getClosestString(classes, name, filter, count);
 }
 
 
 
 bool ReflectedData::doesVariableExist(FieldSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::doesFieldExist(signature, All_Access, true,
-			modifiers, allowMoreMods);
+	return ReflectedDataBase::doesFieldExist(signature, filter);
 }
 
 
-size_t ReflectedData::getGlobalVariableCount() const
+size_t ReflectedData::getGlobalVariableCount(ItemFilter filter) const
 {
-	return getVariableCount(All_Access, true);
+	return getVariableCount(filter);
 }
 
-const std::vector<std::string> ReflectedData::getGlobalVariableNames() const
+const std::vector<std::string> ReflectedData::getGlobalVariableNames(
+		ItemFilter filter) const
 {
-	return getVariableNames(All_Access, true);
+	return getVariableNames(filter);
 }
 
-size_t ReflectedData::getGlobalConstantCount() const
+size_t ReflectedData::getGlobalConstantCount(ItemFilter filter) const
 {
 //	return getGlobalConstantNames().size();
-	return getConstantCount(All_Access, true);
+	return getConstantCount(filter);
 }
 
-const std::vector<std::string> ReflectedData::getGlobalConstantNames() const
+const std::vector<std::string> ReflectedData::getGlobalConstantNames(
+		ItemFilter filter) const
 {
-	return getConstantNames(All_Access, true);
+	return getConstantNames(filter);
 }
 
 
 
-size_t ReflectedData::getGlobalFieldCount() const
+size_t ReflectedData::getGlobalFieldCount(ItemFilter filter) const
 {
 	//return globalVars.size();
-	return getFieldCount(All_Access, true);
+	return getFieldCount(filter);
 }
 
 
-const std::vector<std::string> ReflectedData::getGlobalFieldNames() const
+const std::vector<std::string> ReflectedData::getGlobalFieldNames(
+		ItemFilter filter) const
 {
 	//return getNames(globalVars);
-	return getFieldNames(All_Access, true);
+	return getFieldNames(filter);
 }
 
 
 
 const ReflectedField * ReflectedData::getGlobalField(FieldSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return getField(signature, modifiers, allowMoreMods);
+	return getField(signature, filter);
 }
 
 
 std::vector<const ReflectedField *> ReflectedData::getGlobalFields(
-		int modifiers, bool allowMoreMods)
+		ItemFilter filter)
 {
-	return getItems(fields, All_Access, true, modifiers, allowMoreMods);
+	return getItems(fields, filter);
 }
 
 std::vector<const ReflectedField *> ReflectedData::getClosestGlobalFields(
-		FieldSignature name, int count)
+		FieldSignature name, ItemFilter filter, int count)
 {
-	return getClosest(fields, name, All_Access, true, count);
+	return getClosest(fields, name, filter, count);
 }
 
 std::string ReflectedData::getClosestGlobalFieldsString(
-		FieldSignature name, int count)
+		FieldSignature name, ItemFilter filter, int count)
 {
-	return getClosestString(fields, name, All_Access, true, count);
+	return getClosestString(fields, name, filter, count);
 }
 
 

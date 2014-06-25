@@ -78,121 +78,92 @@ public:
 	 * 		takes an int and double as parameters
 	 *
 	 *  @param functionSignature Signature of the function
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
-
 	 *  @return true is that function exists
 	 */
 	virtual	bool doesFunctionExist(MethodSignature functionSignature,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+			ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets the number of function signatures that are being reflected
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return the number of function signatures
 	 */
-	virtual	size_t getFunctionCount() const;
+	virtual	size_t getFunctionCount(ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets a list of all function signatures that are being reflected
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of function signatures
 	 */
-	virtual	const std::vector<std::string> getFunctionNames() const;
+	virtual	const std::vector<std::string> getFunctionNames(
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets a function that corresponds to the signature or NULL
 	 *
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
-
 	 * @return a metadata object or NULL
 	 */
 	virtual	const ReflectedMethod * getFunction(MethodSignature signature,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+			ItemFilter filter = ItemFilter(All_Access, true)) const;
 
 
 
 	/**
 	 * Gets a list of all functions
 	 *
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
-	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return List of functions
 	 */
 	virtual std::vector<const ReflectedMethod *> getFunctions(
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
+			ItemFilter filter = ItemFilter());
 
 	/**
 	 * Gets a list of the closest functions to the name provided
 	 *
 	 * @param name Name to find
-	 * @param inherited True if inherited functions should be included.
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *
 	 * @return List of functions that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedMethod *> getClosestFunctions(
-			MethodSignature name, int count = MAX_SIMILAR);
+			MethodSignature name, ItemFilter filter = ItemFilter(),
+			int count = MAX_SIMILAR);
 
 
 	/**
 	 * Gets a string comparing the name to the closest names found
 	 *
 	 * @param name Name to find
-	 * @param inherited True if inherited values should be included.
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *
@@ -200,34 +171,21 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestFunctionsString(
-			MethodSignature name, int count = MAX_SIMILAR);
+			MethodSignature name, ItemFilter filter = ItemFilter(),
+			int count = MAX_SIMILAR);
 
 	/**
 	 * Determines if a value (variable or constant) exists with this signature
 	 *
 	 * @param signature Signature of the value (i.e. int x or const double y)
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
 	 * @return true if the field exists
 	 */
 	virtual bool doesVariableExist(FieldSignature signature,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+			ItemFilter filter = ItemFilter()) const;
 
 
 	/**
@@ -235,125 +193,126 @@ public:
 	 *
 	 * @return number of variables with a global scope.
 	 */
-	virtual	size_t getGlobalVariableCount() const;
+	virtual	size_t getGlobalVariableCount(ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets the signatures of variables declared with a
 	 * global scope
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of the signatures of variables
 	 * with a global scope.
 	 */
-	virtual	const std::vector<std::string> getGlobalVariableNames() const;
+	virtual	const std::vector<std::string> getGlobalVariableNames(
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets the number of constants declared with a global scope
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return number of constants with a global scope.
 	 */
-	virtual	size_t getGlobalConstantCount() const;
+	virtual	size_t getGlobalConstantCount(ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets the signatures of constants declared with a
 	 * global scope
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of the signatures of constants
 	 * with a global scope.
 	 */
-	virtual	const std::vector<std::string> getGlobalConstantNames() const;
+	virtual	const std::vector<std::string> getGlobalConstantNames(
+			ItemFilter filter = ItemFilter()) const;
 	//all variables and fields
 
 
 	/**
 	 * Gets the number of constants and variables declared with a global scope
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return number of constants and variables with a global scope.
 	 */
-	virtual	size_t getGlobalFieldCount() const;
+	virtual	size_t getGlobalFieldCount(ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets the signatures of constants and variables declared with a
 	 * global scope
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of the signatures of constants and variables
 	 * with a global scope.
 	 */
-	virtual	const std::vector<std::string> getGlobalFieldNames() const;
+	virtual	const std::vector<std::string> getGlobalFieldNames(
+			ItemFilter filter = ItemFilter()) const;
 
 
 	/**
 	 * Gets a variable or constant that corresponds to the signature or NULL
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
 	 * @return a metadata object or NULL
 	 */
 	virtual	const ReflectedField * getGlobalField(FieldSignature signature,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+			ItemFilter filter = ItemFilter(All_Access, true)) const;
 
 
 	/**
 	 * Gets a list of all global variables
 	 *
-	 * @param inherited True if inherited variables should be included.
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
 	 * @return List of variables in the class
 	 */
 	virtual std::vector<const ReflectedField *> getGlobalFields(
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
+			ItemFilter filter = ItemFilter());
 
 	/**
 	 * Gets a list of the closest variables to the name provided
 	 *
 	 * @param name Name to find
-	 * @param inherited True if inherited variables should be included.
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *
 	 * @return List of variables that are close in name to the name given
 	 */
 	virtual std::vector<const ReflectedField *> getClosestGlobalFields(
-			FieldSignature name, int count = MAX_SIMILAR);
+			FieldSignature name, ItemFilter filter = ItemFilter(),
+			int count = MAX_SIMILAR);
 
 
 	/**
 	 * Gets a string comparing the name to the closest names found
 	 *
 	 * @param name Name to find
-	 * @param inherited True if inherited values should be included.
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *
@@ -361,16 +320,21 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestGlobalFieldsString(
-			FieldSignature name, int count = MAX_SIMILAR);
+			FieldSignature name, ItemFilter filter = ItemFilter(),
+			int count = MAX_SIMILAR);
 
 	/**
 	 * Gets the number of classes
 	 *
 	 *	This does not include inner classes.
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return number of classes
 	 */
-	virtual	size_t getClassCount() const;
+	virtual	size_t getClassCount(ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Checks to see if a class exists using the class's name.
@@ -378,22 +342,17 @@ public:
 	 *
 	 *
 	 * @param name Name of the class
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierTemplate
-	 *
 	 *	If trying to find an inner class, the name should be in the form:
 	 *		<outer>::<inner>
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 *  @return true is that class exists
 	 */
 	virtual	bool doesClassExist(ClassSignature name,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+			ItemFilter filter = ItemFilter()) const;
 
 
 	/**
@@ -401,29 +360,29 @@ public:
 	 *
 	 * This does not include inner classes
 	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a list of class names
 	 */
-	virtual	const std::vector<std::string> getClassNames() const;
+	virtual	const std::vector<std::string> getClassNames(
+			ItemFilter filter = ItemFilter()) const;
 
 	/**
 	 * Gets a class that corresponds to the name or NULL
 	 *
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierTemplate
-	 *
 	 *	If trying to find an inner class, the name should be in the form:
 	 *		<outer>::<inner>
 	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @return a ReflectedClass object or NULL
 	 */
 	virtual	const ReflectedClass * getClass(ClassSignature signature,
-			int modifiers = ALLOW_ALL_MODIFIERS, bool allowMoreMods = true) const;
+			ItemFilter filter = ItemFilter(All_Access, true)) const;
 
 
 	/**
@@ -446,14 +405,16 @@ public:
 	/**
 	 * Gets a list of all classes
 	 *
-	 * @param inherited True if inherited classes should be included.
-	 *
 	 * This does not include inner classes.
+	 *
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return List of classes
 	 */
-	virtual std::vector<ReflectedClass *> getClasses(int modifiers,
-			bool allowMoreMods);
+	virtual std::vector<ReflectedClass *> getClasses(
+			ItemFilter filter = ItemFilter());
 
 	/**
 	 * Gets a list of the closest classes to the name provided
@@ -461,14 +422,18 @@ public:
 	 * This does not include inner classes.
 	 *
 	 * @param name Name to find
-	 * @param inherited True if inherited classes should be included.
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *
 	 * @return List of classes that are close in name to the name given
 	 */
 	virtual std::vector<ReflectedClass *> getClosestClasses(
-			ClassSignature name, int count = MAX_SIMILAR);
+			ClassSignature name, ItemFilter filter = ItemFilter(),
+			int count = MAX_SIMILAR);
 
 
 	/**
@@ -477,7 +442,10 @@ public:
 	 * This does not include inner classes.
 	 *
 	 * @param name Name to find
-	 * @param inherited True if inherited values should be included.
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows Public_Access, non-inherited values with any modifiers.
+	 *  See ItemFilter for more details
+	 *
 	 * @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *
@@ -485,7 +453,8 @@ public:
 	 * to the name given
 	 */
 	virtual std::string getClosestClassesString(
-			ClassSignature name, int count = MAX_SIMILAR);
+			ClassSignature name, ItemFilter filter = ItemFilter(),
+			int count = MAX_SIMILAR);
 
 
 	/**
@@ -537,7 +506,6 @@ public:
 	 * Gets a list of the closest namespaces to the name provided
 	 *
 	 * @param name Name to find
-	 * @param inherited True if inherited namespaces should be included.
 	 * @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *
@@ -551,7 +519,6 @@ public:
 	 * Gets a string comparing the name to the closest names found
 	 *
 	 * @param name Name to find
-	 * @param inherited True if inherited values should be included.
 	 * @param count Maximum number to return (may be less or more if there
 	 *  are values that are equally close to the name)
 	 *

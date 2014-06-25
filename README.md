@@ -23,8 +23,24 @@ if there are mismatches between the instructor’s and student’s code
  See the wiki for limitations and bugs.
  
  Version:
-	0.80
+	0.95
 	
+version 0.95
+	Added support for modifiers
+		Added support for determining modifiers for a specific item
+		Added support for requiring/excluding modifiers during lookup
+			(i.e. find all fields with const but not volatile, etc.)
+	Added support for non-reflected items
+		Private/protected items, uncallable items
+	Added support for namespaces
+		Enumeration, lookup of items in a namespace
+	Completely revamped how signatures work
+		More flexibility, more accessible information (modifiers, etc.) for a
+		signature
+	Modifiers lookups to use a filter to determine what is found
+		Filters on visibility, whether an item is inherited, required modifiers
+		and excluded modifiers
+
 	
 version 0.80	
 	Added support for operators as methods (no longer separate)

@@ -1060,6 +1060,34 @@ public:
 		setOptions(vis, inherit, reqMods, exMods);
 	}
 
+	/**
+	 * Gets the visibility required by this filter
+	 *
+	 * @return Visibility required
+	 */
+	VisibilityAccessType getVisibility() const { return visibility; }
+
+	/**
+	 * Gets whether inherited items are included or not
+	 *
+	 * @return True if inherited items are included
+	 */
+	bool getInherited() const { return allowInherited; }
+
+	/**
+	 * Gets the required modifiers
+	 *
+	 * @return Required modifiers
+	 */
+	int getRequiredModifiers() const { return reqModifiers; }
+
+	/**
+	 * Gets the excluded modifiers
+	 *
+	 * @return Excluded modifiers
+	 */
+	int getExcludedModifiers() const { return excludedModifiers; }
+
 
 	/**
 	 * Determines if this item is allowed with this filter.
@@ -1078,7 +1106,7 @@ public:
 	 * @return true if this item meets the requirements of this filter
 	 */
 	bool isAllowed(const ReflectedItem * item,
-			int addMods = cpgf::metaModifierNone);
+			int addMods = cpgf::metaModifierNone) const;
 };
 
 

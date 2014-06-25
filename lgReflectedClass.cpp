@@ -710,9 +710,9 @@ bool ReflectedClass::hasStoredObject(void * ptr) const {
 				GPP_COMMA_IF(N) \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, const cpgf::GVariant & p)) const \
 				{ \
-	if (doesConstructorExist(signature, Public_Access, ALLOW_ALL_MODIFIERS, false)) \
+	if (doesConstructorExist(signature, ItemFilter(false))) \
 	{ \
-		const cpgf::GMetaConstructor * construct = getConstructor(signature, ALLOW_ALL_MODIFIERS, false) \
+		const cpgf::GMetaConstructor * construct = getConstructor(signature, ItemFilter(false)) \
 		->getConstructor(); \
 		void * object = construct->invoke( \
 				GPP_REPEAT(N, GPP_COMMA_PARAM, p)); \
@@ -826,385 +826,234 @@ const cpgf::GMetaClass* ReflectedClass::getClass() const
 
 
 bool ReflectedClass::doesMethodExist(MethodSignature functionSignature,
-		VisibilityAccessType vis, bool inherit, int modifiers,
-		bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::doesMethodExist(functionSignature, vis, inherit,
-			modifiers, allowMoreMods);
+	return ReflectedDataBase::doesMethodExist(functionSignature, filter);
 }
 
-size_t ReflectedClass::getMethodCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedClass::getMethodCount(ItemFilter filter) const
 {
-	return ReflectedDataBase::getMethodCount(vis, inherit);
+	return ReflectedDataBase::getMethodCount(filter);
 }
 
 
 const std::vector<std::string> ReflectedClass::getMethodNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::getMethodNames(vis, inherit);
+	return ReflectedDataBase::getMethodNames(filter);
 }
 
 const ReflectedMethod * ReflectedClass::getMethod(MethodSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::getMethod(signature, modifiers, allowMoreMods);
+	return ReflectedDataBase::getMethod(signature, filter);
 }
 
 
 std::vector<const ReflectedMethod *> ReflectedClass::getMethods(
-		VisibilityAccessType vis, bool inherited, int modifiers,
-		bool allowMoreMods)
+		ItemFilter filter)
 {
-	return getItems(methods, vis, inherited, modifiers, allowMoreMods);
+	return getItems(methods, filter);
 }
 
 std::vector<const ReflectedMethod *> ReflectedClass::getClosestMethods(
-		MethodSignature name, VisibilityAccessType vis, bool inherited, int count)
+		MethodSignature name, ItemFilter filter, int count)
 {
-	return getClosest(methods, name, vis, inherited, count);
+	return getClosest(methods, name, filter, count);
 }
 
 std::string ReflectedClass::getClosestMethodsString(
-		MethodSignature name, VisibilityAccessType vis, bool inherited, int count)
+		MethodSignature name, ItemFilter filter, int count)
 {
-	return getClosestString(methods, name, vis, inherited, count);
+	return getClosestString(methods, name, filter, count);
 }
 
 bool ReflectedClass::doesFieldExist(FieldSignature signature,
-		VisibilityAccessType vis, bool inherit, int modifiers,
-		bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::doesFieldExist(signature, vis, inherit, modifiers,
-			allowMoreMods);
+	return ReflectedDataBase::doesFieldExist(signature, filter);
 }
 
-size_t ReflectedClass::getVariableCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedClass::getVariableCount(ItemFilter filter) const
 {
-	return ReflectedDataBase::getVariableCount(vis, inherit);
+	return ReflectedDataBase::getVariableCount(filter);
 }
 
 const std::vector<std::string> ReflectedClass::getVariableNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::getVariableNames(vis, inherit);
+	return ReflectedDataBase::getVariableNames(filter);
 }
 
-size_t ReflectedClass::getConstantCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedClass::getConstantCount(ItemFilter filter) const
 {
-	return ReflectedDataBase::getConstantCount(vis, inherit);
+	return ReflectedDataBase::getConstantCount(filter);
 }
 
 const std::vector<std::string> ReflectedClass::getConstantNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::getConstantNames(vis, inherit);
+	return ReflectedDataBase::getConstantNames(filter);
 }
 
 
-size_t ReflectedClass::getFieldCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedClass::getFieldCount(ItemFilter filter) const
 {
-	return ReflectedDataBase::getFieldCount(vis, inherit);
+	return ReflectedDataBase::getFieldCount(filter);
 }
 
 const std::vector<std::string> ReflectedClass::getFieldNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::getFieldNames(vis, inherit);
+	return ReflectedDataBase::getFieldNames(filter);
 }
 
 
 const ReflectedField * ReflectedClass::getField(FieldSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return ReflectedDataBase::getField(signature, modifiers, allowMoreMods);
+	return ReflectedDataBase::getField(signature, filter);
 }
 
 
 std::vector<const ReflectedField *> ReflectedClass::getFields(
-		VisibilityAccessType vis, bool inherited, int modifiers,
-		bool allowMoreMods)
+		ItemFilter filter)
 {
-	return getItems(fields, vis, inherited, modifiers, allowMoreMods);
+	return getItems(fields, filter);
 }
 
 std::vector<const ReflectedField *> ReflectedClass::getClosestFields(
-		FieldSignature name, VisibilityAccessType vis, bool inherited, int count)
+		FieldSignature name, ItemFilter filter, int count)
 {
-	return getClosest(fields, name, vis, inherited, count);
+	return getClosest(fields, name, filter, count);
 }
 
 std::string ReflectedClass::getClosestFieldsString(
-		FieldSignature name, VisibilityAccessType vis, bool inherited, int count)
+		FieldSignature name, ItemFilter filter, int count)
 {
-	return getClosestString(fields, name, vis, inherited, count);
+	return getClosestString(fields, name, filter, count);
 }
 
 bool ReflectedClass::doesConstructorExist(MethodSignature signature,
-		VisibilityAccessType vis, int modifiers,
-		bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return exists(constructors, signature, vis, true, modifiers, allowMoreMods);
+	return exists(constructors, signature, filter);
 	//return (constructors.count(ReflectionUtil::correctSignature(signature)) == 1);
 }
 
-size_t ReflectedClass::getConstructorCount(VisibilityAccessType vis) const
+size_t ReflectedClass::getConstructorCount(ItemFilter filter) const
 {
-	return countItems(constructors, vis, true);
+	return countItems(constructors, filter);
 }
 
 const std::vector<std::string> ReflectedClass::getConstructorNames(
-		VisibilityAccessType vis) const
+		ItemFilter filter) const
 {
-	return getNames(constructors, vis, true);
+	return getNames(constructors, filter);
 }
 
 const ReflectedConstructor * ReflectedClass::getConstructor(
-		MethodSignature signature, int modifiers,
-		bool allowMoreMods) const
+		MethodSignature signature, ItemFilter filter) const
 {
-	return getItem(constructors, signature, modifiers, allowMoreMods);
+	return getItem(constructors, signature, filter);
 }
 
 
 std::vector<const ReflectedConstructor *> ReflectedClass::getConstructors(
-		VisibilityAccessType vis, int modifiers, bool allowMoreMods)
+		ItemFilter filter)
 {
-	return getItems(constructors, vis, true, modifiers, allowMoreMods);
+	return getItems(constructors, filter);
 }
 
 std::vector<const ReflectedConstructor *> ReflectedClass::getClosestConstructors(
-		MethodSignature name, VisibilityAccessType vis, int count)
+		MethodSignature name, ItemFilter filter, int count)
 {
-	return getClosest(constructors, name, vis, true, count);
+	return getClosest(constructors, name, filter, count);
 }
 
 std::string ReflectedClass::getClosestConstructorsString(
-		MethodSignature name, VisibilityAccessType vis,  int count)
+		MethodSignature name, ItemFilter filter,  int count)
 {
-	return getClosestString(constructors, name, vis, true, count);
+	return getClosestString(constructors, name, filter, count);
 }
 
 
-//bool ReflectedClass::doesCallableMethodExist(std::string signature) const {
-//	return (allMethods.count(ReflectionUtil::correctSignature(signature)) == 1);
-//}
-//
-//
-//size_t ReflectedClass::getCallableMethodCount() const
-//{
-//	return allMethods.size();
-//}
-//
-//
-//const std::vector<std::string> ReflectedClass::getCallableMethodNames() const
-//{
-//	return getNames(allMethods);
-//}
-//
-//const cpgf::GMetaMethod* ReflectedClass::getCallableMethod(std::string signature) const
-//{
-//	return getItem(allMethods, ReflectionUtil::correctSignature(signature));
-//}
 
-
-bool ReflectedClass::hasBaseClass(ClassSignature name, VisibilityAccessType vis,
-		int modifiers, bool allowMoreMods) const {
-	return exists(baseClasses, name, vis, true, modifiers, allowMoreMods);
+bool ReflectedClass::hasBaseClass(ClassSignature name, ItemFilter filter) const {
+	return exists(baseClasses, name, filter);
 	//return (baseClasses.count(ReflectionUtil::correctType(name)) == 1);
 }
 
-size_t ReflectedClass::getBaseClassCount(VisibilityAccessType vis) const
+size_t ReflectedClass::getBaseClassCount(ItemFilter filter) const
 {
-	return countItems(baseClasses, vis, true);
+	return countItems(baseClasses, filter);
 }
 
 
 const std::vector<std::string> ReflectedClass::getBaseClassNames(
-		VisibilityAccessType vis) const
+		ItemFilter filter) const
 {
-	return getNames(baseClasses, vis, true);
+	return getNames(baseClasses, filter);
 }
 
 const ReflectedBaseClass * ReflectedClass::getBaseClass(ClassSignature name,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return getItem(baseClasses, name, modifiers, allowMoreMods);
+	return getItem(baseClasses, name, filter);
 }
 
 
-/**
- * Gets a list of the closest base class to the name provided
- *
- * @param name Name to find
- *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
- * @param count Maximum number to return (may be less or more if there
- *  are values that are equally close to the name)
- *
- * @return List of base classes that are close in name to the name given
- */
+
 std::vector<const ReflectedBaseClass *> ReflectedClass::getClosestBaseClasses(
-		ClassSignature name, VisibilityAccessType vis, int count) {
-	return getClosest(baseClasses, name, vis, true, count);
+		ClassSignature name, ItemFilter filter, int count) {
+	return getClosest(baseClasses, name, filter, count);
 }
 
 
-/**
- * Gets a string comparing the name to the closest names found
- *
- * @param name Name to find
- *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
- * @param count Maximum number to return (may be less or more if there
- *  are values that are equally close to the name)
- *
- * @return String with a list of base classes that are close in name
- * to the name given
- */
+
 std::string ReflectedClass::getClosestBaseClassesString(
-		ClassSignature name, VisibilityAccessType vis, int count) {
-	return getClosestString(baseClasses, name, vis, true, count);
+		ClassSignature name, ItemFilter filter, int count) {
+	return getClosestString(baseClasses, name, filter, count);
 }
 
-/**
- * Checks to see if the class has a (public) base class by the name of name.
- *
- *
- *  @param name Name of the inner class
- *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
- * @param modifiers set of modifiers (ORed together) that the item should
- * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
- * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
- * 	apply here:
- * 		metaModifierNone
- * 		metaModifierStatic
- * 		metaModifierVirtual
- * 		metaModifierPureVirtual
- * 		metaModifierTemplate
- * 		metaModifierConst
- * 		metaModifierVolatile
- * 		metaModifierInline
- * 		metaModifierExplicit
- * 		metaModifierExtern
- * 		metaModifierMutable
- *
- * @param allowMoreMods true if the field can have other modifiers aside
- * 	from those listed.  (defaults to true)
- *  @return true is name is the name of one of the inner classes
- */
+
 bool ReflectedClass::hasInnerClass(ClassSignature name,
-		VisibilityAccessType vis, int modifiers, bool allowMoreMods) const {
-	return exists(innerClasses, name, vis, true, modifiers, allowMoreMods);
-}
-
-/**
- * Gets the number of inner classes for this class.
- *
- *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
- *
- * @return the number of inner classes for this class
- */
-size_t ReflectedClass::getInnerClassCount(VisibilityAccessType vis) const {
-	return countItems(innerClasses, vis, true);
+		ItemFilter filter) const {
+	return exists(innerClasses, name, filter);
 }
 
 
-/**
- * Gets a list of all inner classes for this class.
- *
- *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
- *
- * @return a list of inner class names
- */
+size_t ReflectedClass::getInnerClassCount(ItemFilter filter) const {
+	return countItems(innerClasses, filter);
+}
+
+
+
 const std::vector<std::string> ReflectedClass::getInnerClassNames(
-		VisibilityAccessType vis) const {
-	return getNames(innerClasses, vis, true);
+		ItemFilter filter) const {
+	return getNames(innerClasses, filter);
 }
 
-/**
- * Gets a inner class for this class.
- *
- *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
- * @param modifiers set of modifiers (ORed together) that the item should
- * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
- * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
- * 	apply here:
- * 		metaModifierNone
- * 		metaModifierStatic
- * 		metaModifierVirtual
- * 		metaModifierPureVirtual
- * 		metaModifierTemplate
- * 		metaModifierConst
- * 		metaModifierVolatile
- * 		metaModifierInline
- * 		metaModifierExplicit
- * 		metaModifierExtern
- * 		metaModifierMutable
- *
- * @param allowMoreMods true if the field can have other modifiers aside
- * 	from those listed.  (defaults to true)
- * @return a ReflectedClass object or NULL
- */
+
 ReflectedClass * ReflectedClass::getInnerClass(ClassSignature name,
-		int modifiers, bool allowMoreMods) const {
-	return getItem(innerClasses, name, modifiers, allowMoreMods);
+		ItemFilter filter) const {
+	return getItem(innerClasses, name, filter);
 }
 
 
-/**
- * Gets a list of the closest inner class to the name provided
- *
- * @param name Name to find
- *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
- * @param count Maximum number to return (may be less or more if there
- *  are values that are equally close to the name)
- *
- * @return List of inner classes that are close in name to the name given
- */
+
 std::vector<ReflectedClass *> ReflectedClass::getClosestInnerClasses(
-		ClassSignature name, VisibilityAccessType vis,
-		int count) {
-	return getClosest(innerClasses, name, vis, true, count);
+		ClassSignature name, ItemFilter filter, int count) {
+	return getClosest(innerClasses, name, filter, count);
 }
 
 
-/**
- * Gets a string comparing the name to the closest names found
- *
- * @param name Name to find
- *  @param vis Visibility of items to retrieve. Generally this is Public_Access.
- * @param count Maximum number to return (may be less or more if there
- *  are values that are equally close to the name)
- *
- * @return String with a list of inner classes that are close in name
- * to the name given
- */
+
 std::string ReflectedClass::getClosestInnerClassesString(
-		ClassSignature name, VisibilityAccessType vis, int count){
-	return getClosestString(innerClasses, name, vis, true, count);
+		ClassSignature name, ItemFilter filter, int count){
+	return getClosestString(innerClasses, name, filter, count);
 }
 
-
-
-//bool ReflectedObject::invokeReturnTest(std::string methodSignature,
-//	int & returnVal)
-//{
-//
-//return LookingGlass::invokeInternalTest(this, methodSignature, true, returnVal) == LookingGlass::INVOKE_SUCCESS;
-//}
-
-
-
-//bool instanceOf(const ReflectedClass * rClass, ReflectedObjectPtr rObject) {
-//	if (rClass != NULL) {
-//		return rClass->instanceOf(rObject);
-//	}
-//
-//	return false;
-//}
 
 
 

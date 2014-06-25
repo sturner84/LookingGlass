@@ -335,14 +335,15 @@ bool LookingGlass::invokeFunction(std::string functionSignature \
 			if (object->getClass() != NULL)
 			{
 				const ReflectedClass* c = object->getClass();
-				if (c->doesMethodExist(nSignature, All_Access, true))
+				ItemFilter filter(All_Access, true); //all visibilities and inherited methods
+				if (c->doesMethodExist(nSignature, filter))
 				{
-					func = c->getMethod(nSignature, ReflectedData::ALLOW_ALL_MODIFIERS, false);
+					func = c->getMethod(nSignature, filter);
 				}
 				else
 				{
 					if (allowNonReflected && c->doesNonReflectedMethodExist(
-							nSignature, All_Access, true)) {
+							nSignature, filter)) {
 						func = c->getNonReflectedMethod(nSignature);
 					}
 					else {

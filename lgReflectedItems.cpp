@@ -799,7 +799,7 @@ void ItemFilter::setOptions(VisibilityAccessType vis, bool inherit, int reqMods,
  *
  * @return true if this item meets the requirements of this filter
  */
-bool ItemFilter::isAllowed(const ReflectedItem * item, int addMods) {
+bool ItemFilter::isAllowed(const ReflectedItem * item, int addMods) const {
 	int tempReqMods = reqModifiers | addMods;
 	VisibilityType itemVis = item->getVisibility();
 	bool itemInherited = item->isInherited();

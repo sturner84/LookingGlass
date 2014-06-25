@@ -527,24 +527,9 @@ public:
 	 * @param val value to store the variable in. This is likely a COPY of
 	 * 		the global variable.
 	 * @param signature Signature for the variable (i.e. int x, string n, etc.)
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
-	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return True if the variable could be accessed. If false, the val
 	 * 	 	of val is unknown.
@@ -552,7 +537,7 @@ public:
 	 */
 	template <typename ValueType>
 	static bool getGlobalVariable(ValueType& val, FieldSignature signature,
-			int modifiers = ReflectedData::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
+			ItemFilter filter = ItemFilter(All_Access, true));
 
 
 	/**
@@ -560,30 +545,15 @@ public:
 	 *
 	 * @param val value to store in the global variable.
 	 * @param signature Signature for the variable (i.e. int x, string n, etc.)
-	 * @param modifiers set of modifiers (ORed together) that the item should
-	 * 	have.  Use ReflectedData::ALLOW_ALL_MODIFIERS to ignore modifiers
-	 * 	(default behavior).  List of modifiers from cpgf/gmetacommon.h that
-	 * 	apply here:
-	 * 		metaModifierNone
-	 * 		metaModifierStatic
-	 * 		metaModifierVirtual
-	 * 		metaModifierPureVirtual
-	 * 		metaModifierTemplate
-	 * 		metaModifierConst
-	 * 		metaModifierVolatile
-	 * 		metaModifierInline
-	 * 		metaModifierExplicit
-	 * 		metaModifierExtern
-	 * 		metaModifierMutable
-	 *
-	 * @param allowMoreMods true if the field can have other modifiers aside
-	 * 	from those listed.  (defaults to true)
+	 *  @param filter Filter to apply to the results. By default this
+	 *  allows All_Access, inherited values with any modifiers.
+	 *  See ItemFilter for more details
 	 *
 	 * @return True if the variable could be set.
 	 */
 	template <typename ValueType>
 	static bool setGlobalVariable(const ValueType& val, FieldSignature signature,
-			int modifiers = ReflectedData::ALLOW_ALL_MODIFIERS, bool allowMoreMods = true);
+			ItemFilter filter = ItemFilter(All_Access, true));
 
 //	/**
 //		 * Sets a global variable with the specified signature.
@@ -680,15 +650,15 @@ bool LookingGlass::invokeWithReturn(std::string functionSignature, \
 
 template <typename ValueType>
 bool LookingGlass::getGlobalVariable(ValueType& val, FieldSignature signature,
-		int modifiers, bool allowMoreMods)
+		ItemFilter filter)
 {
 	ReflectedData* data = ReflectedData::getDataInstance();
 	bool success = false;
 
-	if (data->doesVariableExist(signature, modifiers, allowMoreMods))
+	if (data->doesVariableExist(signature, filter))
 	{
 		const ReflectedField * field = data->getGlobalField(signature,
-				modifiers, allowMoreMods);
+				filter);
 		if (field->isAccessible()) {
 			val = (cpgf::fromVariant<ValueType>(field->getField()->get(NULL)));
 			success = true;
@@ -699,16 +669,15 @@ bool LookingGlass::getGlobalVariable(ValueType& val, FieldSignature signature,
 }
 
 template <typename ValueType>
-bool LookingGlass::setGlobalVariable(const ValueType& val, FieldSignature signature,
-		int modifiers, bool allowMoreMods)
+bool LookingGlass::setGlobalVariable(const ValueType& val,
+		FieldSignature signature, ItemFilter filter)
 {
 	ReflectedData* data = ReflectedData::getDataInstance();
 	bool success = false;
 
-	if (data->doesVariableExist(signature, modifiers, allowMoreMods))
+	if (data->doesVariableExist(signature, filter))
 	{
-		const ReflectedField * field = data->getGlobalField(signature,
-				modifiers, allowMoreMods);
+		const ReflectedField * field = data->getGlobalField(signature, filter);
 		try
 		{
 			if (field->isAccessible()) {

@@ -191,159 +191,91 @@ ReflectedDataBase::~ReflectedDataBase()
 }
 
 bool ReflectedDataBase::doesMethodExist(MethodSignature functionSignature,
-		VisibilityAccessType vis, bool inherited, int modifiers,
-		bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return exists(methods, functionSignature,
-			vis, inherited, modifiers, allowMoreMods);
-
-//	const ReflectedMethod * m = getItem(methods,
-//			ReflectionUtil::correctSignature(functionSignature));
-//	return (m && (inherited || !m->isInherited()));
-
-//	return (methods.count(ReflectionUtil::correctSignature(functionSignature)) == 1);
-//	return getItem(functions, ReflectionUtil::correctSignature(functionSignature)) != NULL;
+	return exists(methods, functionSignature, filter);
 }
 
 
 
 
-size_t ReflectedDataBase::getMethodCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedDataBase::getMethodCount(ItemFilter filter) const
 {
-	return countItems(methods, vis, inherit);
+	return countItems(methods, filter);
 }
 
 const std::vector<std::string> ReflectedDataBase::getMethodNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
-	return getNames(methods, vis, inherit);
+	return getNames(methods, filter);
 }
 
 
 const ReflectedMethod * ReflectedDataBase::getMethod(MethodSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return getItem(methods, signature,
-			modifiers, allowMoreMods);
+	return getItem(methods, signature, filter);
 }
 
 
 
 bool ReflectedDataBase::doesNonReflectedMethodExist(
 		MethodSignature functionSignature,
-		VisibilityAccessType vis, bool inherited) const
+		ItemFilter filter) const
 {
 	return exists(nonReflectedMethods, functionSignature,
-			vis, inherited, ALLOW_ALL_MODIFIERS, false);
+			filter);
 
 }
 
 
 
 
-size_t ReflectedDataBase::getNonReflectedMethodCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedDataBase::getNonReflectedMethodCount(ItemFilter filter) const
 {
-	return countItems(nonReflectedMethods, vis, inherit);
+	return countItems(nonReflectedMethods, filter);
 }
 
 const std::vector<std::string> ReflectedDataBase::getNonReflectedMethodNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
-	return getNames(nonReflectedMethods, vis, inherit);
+	return getNames(nonReflectedMethods, filter);
 }
 
 
 const ReflectedMethod * ReflectedDataBase::getNonReflectedMethod(
-		MethodSignature signature) const
+		MethodSignature signature, ItemFilter filter) const
 {
-	return getItem(nonReflectedMethods, signature, ALLOW_ALL_MODIFIERS, false);
+	return getItem(nonReflectedMethods, signature, filter);
 }
 
 
 
-//bool ReflectedDataBase::doesOperatorExist(std::string functionSignature,
-//		VisibilityAccessType vis, bool inherited) const
-//{
-//	return exists(operators, ReflectionUtil::correctSignature(functionSignature),
-//			vis, inherited);
-//
-////	const ReflectedOperator * m = getItem(operators,
-////			ReflectionUtil::correctSignature(functionSignature));
-////	return (m && (inherited || !m->isInherited()));
-//	//return (operators.count(ReflectionUtil::correctSignature(functionSignature)) == 1);
-//}
-//
-//size_t ReflectedDataBase::getOperatorCount(VisibilityAccessType vis,
-//		bool inherit) const
-//{
-//	return countItems(operators, vis, inherit);
-//}
-//
-//const std::vector<std::string> ReflectedDataBase::getOperatorNames(
-//		VisibilityAccessType vis, bool inherit) const
-//{
-//	return getNames(operators, vis, inherit);
-//}
-//
-//const ReflectedOperator * ReflectedDataBase::getOperator(std::string signature) const
-//{
-//	return getItem(operators, ReflectionUtil::correctSignature(signature));
-//}
-//
-//
-//std::vector<const ReflectedOperator *> ReflectedDataBase::getOperators(
-//		VisibilityAccessType vis, bool inherited)
-//{
-//	return getItems(operators, vis, inherited);
-//}
-//
-//std::vector<const ReflectedOperator *> ReflectedDataBase::getClosestOperators(
-//		std::string name, VisibilityAccessType vis, bool inherited, int count)
-//{
-//	return getClosest(operators, name, vis, inherited, count);
-//}
-//
-//std::string ReflectedDataBase::getClosestOperatorsString(
-//		std::string name, VisibilityAccessType vis, bool inherited, int count)
-//{
-//	return getClosestString(operators, name, vis, inherited, count);
-//}
+
 
 
 //ignore values, just look for name
 bool ReflectedDataBase::doesEnumExist(EnumSignature name,
-		VisibilityAccessType vis, bool inherited, int modifiers,
-		bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return exists(enums, name, vis, inherited,
-			modifiers, allowMoreMods);
-
-//	const ReflectedEnum * m = getItem(enums,
-//			ReflectionUtil::correctEnum(name));
-//	return (m && (vis & m->getVisibility())
-//			&& (inherited || !m->isInherited()));
-	//return (enums.count(ReflectionUtil::correctEnum(name)) == 1);
-//	return getItem(globalEnums, ReflectionUtil::correctEnum(name)) != NULL;
+	return exists(enums, name, filter);
 }
 
 
-size_t ReflectedDataBase::getEnumCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedDataBase::getEnumCount(ItemFilter filter) const
 {
-	return countItems(enums, vis, inherit);
+	return countItems(enums, filter);
 	//return enums.size();
 }
 
 const std::vector<std::string> ReflectedDataBase::getEnumNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
-	return getNames(enums, vis, inherit);
+	return getNames(enums, filter);
 }
 
 const ReflectedEnum * ReflectedDataBase::getEnum(EnumSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
 //	std::string name = ReflectionUtil::correctEnum(signature);
 //	if (globalEnums.count(name) == 1)
@@ -351,37 +283,34 @@ const ReflectedEnum * ReflectedDataBase::getEnum(EnumSignature signature,
 //		return globalEnums[name];
 //	}
 //	return NULL;
-	return getItem(enums, signature, modifiers, allowMoreMods);
+	return getItem(enums, signature, filter);
 }
 
 
 
 std::vector<const ReflectedEnum *> ReflectedDataBase::getEnums(
-		VisibilityAccessType vis, bool inherited, int modifiers,
-		bool allowMoreMods)
+		ItemFilter filter)
 {
-	return getItems(enums, vis, inherited, modifiers, allowMoreMods);
+	return getItems(enums, filter);
 }
 
 std::vector<const ReflectedEnum *> ReflectedDataBase::getClosestEnums(
-		EnumSignature name, VisibilityAccessType vis, bool inherited, int count)
+		EnumSignature name, ItemFilter filter, int count)
 {
-	return getClosest(enums, name, vis, inherited, count);
+	return getClosest(enums, name, filter, count);
 }
 
 std::string ReflectedDataBase::getClosestEnumsString(
-		EnumSignature name, VisibilityAccessType vis, bool inherited, int count)
+		EnumSignature name, ItemFilter filter, int count)
 {
-	return getClosestString(enums, name, vis, inherited, count);
+	return getClosestString(enums, name, filter, count);
 }
 
 
 bool ReflectedDataBase::doesFieldExist(FieldSignature name,
-		VisibilityAccessType vis, bool inherited, int modifiers,
-		bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return exists(fields, name, vis, inherited,
-			modifiers, allowMoreMods);
+	return exists(fields, name, filter);
 
 //	const ReflectedField * m = getItem(fields,
 //				ReflectionUtil::correctField(name));
@@ -389,14 +318,13 @@ bool ReflectedDataBase::doesFieldExist(FieldSignature name,
 	//return (fields.count(ReflectionUtil::correctField(name)) == 1);
 }
 
-size_t ReflectedDataBase::getVariableCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedDataBase::getVariableCount(ItemFilter filter) const
 {
-	return getVariableNames(vis, inherit).size();
+	return getVariableNames(filter).size();
 }
 
 const std::vector<std::string> ReflectedDataBase::getVariableNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
 	std::vector<std::string> names;
 
@@ -415,9 +343,13 @@ const std::vector<std::string> ReflectedDataBase::getVariableNames(
 //				&& !type.isReferenceToConstVolatile()
 //				&& (inherit || !field->isInherited())
 //				&& (vis & field->getVisibility()))
-		if (!field->isConst()
-				&& (inherit || !field->isInherited())
-				&& (vis & field->getVisibility()))
+//		if (!field->isConst()
+//				&& (inherit || !field->isInherited())
+//				&& (vis & field->getVisibility()))
+		ItemFilter varFilter(filter.getVisibility(), filter.getInherited(),
+				filter.getRequiredModifiers(),
+				filter.getExcludedModifiers() | cpgf::metaModifierConst);
+		if (varFilter.isAllowed(field))
 		{
 			names.push_back(it->first);
 		}
@@ -426,14 +358,13 @@ const std::vector<std::string> ReflectedDataBase::getVariableNames(
 	return names;
 }
 
-size_t ReflectedDataBase::getConstantCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedDataBase::getConstantCount(ItemFilter filter) const
 {
-	return getConstantNames(vis, inherit).size();
+	return getConstantNames(filter).size();
 }
 
 const std::vector<std::string> ReflectedDataBase::getConstantNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
 	std::vector<std::string> names;
 
@@ -452,9 +383,10 @@ const std::vector<std::string> ReflectedDataBase::getConstantNames(
 //				|| type.isReferenceToConstVolatile())
 //				&& (inherit || !field->isInherited())
 //				&& (vis & field->getVisibility()))
-		if (field->isConst()
-				&& (inherit || !field->isInherited())
-				&& (vis & field->getVisibility()))
+//		if (field->isConst()
+//				&& (inherit || !field->isInherited())
+//				&& (vis & field->getVisibility()))
+		if (filter.isAllowed(field, cpgf::metaModifierConst))
 		{
 			names.push_back(it->first);
 		}
@@ -465,26 +397,25 @@ const std::vector<std::string> ReflectedDataBase::getConstantNames(
 
 
 
-size_t ReflectedDataBase::getFieldCount(VisibilityAccessType vis,
-		bool inherit) const
+size_t ReflectedDataBase::getFieldCount(ItemFilter filter) const
 {
-	return countItems(fields, vis, inherit);
+	return countItems(fields, filter);
 	//return fields.size();
 }
 
 
 const std::vector<std::string> ReflectedDataBase::getFieldNames(
-		VisibilityAccessType vis, bool inherit) const
+		ItemFilter filter) const
 {
-	return getNames(fields, vis, inherit);
+	return getNames(fields, filter);
 }
 
 
 
 const ReflectedField * ReflectedDataBase::getField(FieldSignature signature,
-		int modifiers, bool allowMoreMods) const
+		ItemFilter filter) const
 {
-	return getItem(fields, signature, modifiers, allowMoreMods);
+	return getItem(fields, signature, filter);
 }
 
 
