@@ -326,8 +326,7 @@ public:
 	/**
 	 * Determines if a main function exists
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * default, that name is "__student_main".
+	 *
 	 *
 	 * @returns one of the following MAIN_TYPE values
 	 * 		NO_MAIN - no main function found
@@ -338,49 +337,41 @@ public:
 			MAIN_ARGS_ENV_OTHER - if the function is defined as
 				"int main(int, char * *, char * *, char * *)"
 	 */
-	static MAIN_TYPE doesMainExist(std::string newMainName);
+	static MAIN_TYPE doesMainExist();
 
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName);
+	static int invokeMain();
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param argc Argument count to be sent to main
 	 * @param argv Arguments to be sent to main
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, int argc, char** argv);
+	static int invokeMain(int argc, char** argv);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param argc Argument count to be sent to main
 	 * @param argv Arguments to be sent to main
 	 * @param env Environment paths for main
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, int argc, char** argv, char** env);
+	static int invokeMain(int argc, char** argv, char** env);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param argc Argument count to be sent to main
 	 * @param argv Arguments to be sent to main
 	 * @param env Environment paths for main
@@ -388,37 +379,31 @@ public:
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, int argc, char** argv, char** env, char** other);
+	static int invokeMain(int argc, char** argv, char** env, char** other);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param output Output from the main function as written to cout.
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, std::string &output);
+	static int invokeMain(std::string &output);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param output Output from the main function as written to cout.
 	 * @param argc Argument count to be sent to main
 	 * @param argv Arguments to be sent to main
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, std::string &output, int argc, char** argv);
+	static int invokeMain(std::string &output, int argc, char** argv);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param output Output from the main function as written to cout.
 	 * @param argc Argument count to be sent to main
 	 * @param argv Arguments to be sent to main
@@ -426,14 +411,12 @@ public:
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, std::string &output, int argc, char** argv,
+	static int invokeMain(std::string &output, int argc, char** argv,
 			char** env);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param output Output from the main function as written to cout.
 	 * @param argc Argument count to be sent to main
 	 * @param argv Arguments to be sent to main
@@ -442,26 +425,22 @@ public:
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, std::string &output, int argc, char** argv,
+	static int invokeMain(std::string &output, int argc, char** argv,
 			char** env, char** other);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param output Output from the main function as written to cout.
 	 * @param input Input to the main function as read from cin
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, std::string &output, std::string input);
+	static int invokeMain(std::string &output, std::string input);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param output Output from the main function as written to cout.
 	 * @param input Input to the main function as read from cin
 	 * @param argc Argument count to be sent to main
@@ -469,13 +448,11 @@ public:
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, std::string &output,  std::string input, int argc, char** argv);
+	static int invokeMain(std::string &output,  std::string input, int argc, char** argv);
 
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param output Output from the main function as written to cout.
 	 * @param input Input to the main function as read from cin
 	 * @param argc Argument count to be sent to main
@@ -484,13 +461,11 @@ public:
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, std::string &output,  std::string input, int argc, char** argv,
+	static int invokeMain(std::string &output,  std::string input, int argc, char** argv,
 			char** env);
 	/**
 	 * Invokes the main function
 	 *
-	 * @param newMainName The name of the main function after reflection. By
-	 * 	default, that name is "__student_main".
 	 * @param output Output from the main function as written to cout.
 	 * @param input Input to the main function as read from cin
 	 * @param argc Argument count to be sent to main
@@ -500,7 +475,7 @@ public:
 	 *
 	 * @return The value returned from main.
 	 */
-	static int invokeMain(std::string newMainName, std::string &output,  std::string input, int argc, char** argv,
+	static int invokeMain(std::string &output,  std::string input, int argc, char** argv,
 			char** env, char** other);
 
 	/**

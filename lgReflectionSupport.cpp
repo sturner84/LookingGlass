@@ -97,9 +97,10 @@ const ReflectedMethod * LookingGlass::getMain(LookingGlass::MAIN_TYPE mainType, 
 	return NULL;
 }
 
-LookingGlass::MAIN_TYPE LookingGlass::doesMainExist(std::string newMainName)
+LookingGlass::MAIN_TYPE LookingGlass::doesMainExist()
 {
 	ReflectedData* data = ReflectedData::getDataInstance();
+	std::string newMainName = cpgf::getReflectMainName();
 
 	if (data->doesFunctionExist(MAIN_RETURN_STR + newMainName + MAIN_NO_PARAM_STR))
 	{
@@ -124,77 +125,79 @@ LookingGlass::MAIN_TYPE LookingGlass::doesMainExist(std::string newMainName)
 	return NO_MAIN;
 }
 
-int LookingGlass::invokeMain(std::string newMainName)
+int LookingGlass::invokeMain()
 {
 	std::string output;
-	return invokeMain(newMainName, output, "", 0, NULL, NULL, NULL);
+	return invokeMain(output, "", 0, NULL, NULL, NULL);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, int argc, char** argv)
+int LookingGlass::invokeMain(int argc, char** argv)
 {
 	std::string output;
-	return invokeMain(newMainName, output, "", argc, argv, NULL, NULL);
+	return invokeMain(output, "", argc, argv, NULL, NULL);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, int argc, char** argv, char** env)
+int LookingGlass::invokeMain(int argc, char** argv, char** env)
 {
 	std::string output;
-	return invokeMain(newMainName, output, "", argc, argv, env, NULL);
+	return invokeMain(output, "", argc, argv, env, NULL);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, int argc, char** argv, char** env, char** other)
+int LookingGlass::invokeMain(int argc, char** argv, char** env, char** other)
 {
 	std::string output;
-	return invokeMain(newMainName, output, "", argc, argv, env, other);
+	return invokeMain(output, "", argc, argv, env, other);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, std::string &output)
+int LookingGlass::invokeMain(std::string &output)
 {
-	return invokeMain(newMainName, output, "", 0, NULL, NULL, NULL);
+	return invokeMain(output, "", 0, NULL, NULL, NULL);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, std::string &output, int argc, char** argv)
+int LookingGlass::invokeMain(std::string &output, int argc, char** argv)
 {
-	return invokeMain(newMainName, output, "", argc, argv, NULL, NULL);
+	return invokeMain(output, "", argc, argv, NULL, NULL);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, std::string &output, int argc, char** argv,
+int LookingGlass::invokeMain(std::string &output, int argc, char** argv,
 		char** env)
 {
-	return invokeMain(newMainName, output, "", argc, argv, env, NULL);
+	return invokeMain(output, "", argc, argv, env, NULL);
 }
 
 
-int LookingGlass::invokeMain(std::string newMainName, std::string &output, int argc, char** argv,
+int LookingGlass::invokeMain(std::string &output, int argc, char** argv,
 		char** env, char** other)
 {
-	return invokeMain(newMainName, output, "", argc, argv, env, other);
+	return invokeMain(output, "", argc, argv, env, other);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, std::string &output, std::string input)
+int LookingGlass::invokeMain(std::string &output, std::string input)
 {
-	return invokeMain(newMainName, output, input, 0, NULL, NULL, NULL);
+	return invokeMain(output, input, 0, NULL, NULL, NULL);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, std::string &output, std::string input, int argc, char** argv)
+int LookingGlass::invokeMain(std::string &output, std::string input, int argc, char** argv)
 {
-	return invokeMain(newMainName, output, input, argc, argv, NULL, NULL);
+	return invokeMain(output, input, argc, argv, NULL, NULL);
 }
 
-int LookingGlass::invokeMain(std::string newMainName, std::string &output,  std::string input, int argc, char** argv,
+int LookingGlass::invokeMain(std::string &output,  std::string input, int argc, char** argv,
 		char** env)
 {
-	return invokeMain(newMainName, output, input, argc, argv, NULL, NULL);
+	return invokeMain(output, input, argc, argv, NULL, NULL);
 }
 
 
-int LookingGlass::invokeMain(std::string newMainName, std::string &output,
+int LookingGlass::invokeMain(std::string &output,
 		std::string input, int argc, char** argv,
 		char** env, char** other)
 {
 	StdIORedirector testHelp;
 
-	MAIN_TYPE type = doesMainExist(newMainName);
+	std::string newMainName = cpgf::getReflectMainName();
+
+	MAIN_TYPE type = doesMainExist();
 	int returnVal = -1;
 	cpgf::GVariant result;
 
